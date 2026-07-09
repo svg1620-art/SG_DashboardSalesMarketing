@@ -228,26 +228,17 @@ def _coerce_month(r: dict) -> None:
 
 
 def _add_unit_economics(r: dict, ad_spend: float, oc, config) -> None:
-    """CAC / средний чек / LTV / LTV:CAC / ROAS для месяца (уточнения заказчика)."""
+    """CAC / средний чек / LTV / LTV:CAC / ROAS для месяца (по методике заказчика).
+
+    Затраты — прямые месячные тоталы: «Расходы на маркетинг» (уже включает
+    рекламу и ЗП маркетинга) и «Расходы на продажи» (ЗП продаж + налоги).
+    """
     won = r["sold"]
-    salary_sales = float(oc["salary_sales"]) if oc else 0.0
-    salary_marketing = float(oc["salary_marketing"]) if oc else 0.0
-    payroll_tax_pct = float(oc["payroll_tax_pct"]) if oc else 0.0
-
-    payroll_tax = (salary_sales + salary_marketing) * payroll_tax_pct / 100.0
-    turnover_tax = r["revenue"] * config.TURNOVER_TAX_PCT / 100.0
-
-    # Разбивка (уточнение заказчика): маркетинг = реклама + ЗП маркетинга;
-    # отдел продаж = ЗП продаж + все налоги (на ФОТ и с оборота).
-    marketing_cost = ad_spend + salary_marketing
-    sales_cost = salary_sales + payroll_tax + turnover_tax
+    marketing_cost = float(oc["cost_marketing"]) if oc else 0.0
+    sales_cost = float(oc["cost_sales"]) if oc else 0.0
     total_cost = marketing_cost + sales_cost
 
-    r["ad_spend"] = ad_spend
-    r["salary_sales"] = salary_sales
-    r["salary_marketing"] = salary_marketing
-    r["payroll_tax"] = payroll_tax
-    r["turnover_tax"] = turnover_tax
+    r["ad_spend"] = ad_spend           # реклама по источникам (для ROAS), подмножество маркетинга
     r["marketing_cost"] = marketing_cost
     r["sales_cost"] = sales_cost
     r["total_cost"] = total_cost
@@ -275,15 +266,9 @@ def _month_totals(rows: list, ad: dict, op: dict, config) -> dict:
     # суммарные затраты по отображаемым месяцам (только по показанным столбцам)
     shown = {r["month"] for r in rows}
     ad_total = sum(v for m, v in ad.items() if m in shown)
-    salary_sales_total = sum(float(v["salary_sales"]) for m, v in op.items() if m in shown)
-    salary_marketing_total = sum(float(v["salary_marketing"]) for m, v in op.items() if m in shown)
-    payroll = sum((float(v["salary_sales"]) + float(v["salary_marketing"]))
-                  * float(v["payroll_tax_pct"]) / 100.0 for m, v in op.items() if m in shown)
-    turnover = t["revenue"] * config.TURNOVER_TAX_PCT / 100.0
-
     t["ad_spend"] = ad_total
-    t["marketing_cost"] = ad_total + salary_marketing_total
-    t["sales_cost"] = salary_sales_total + payroll + turnover
+    t["marketing_cost"] = sum(float(v["cost_marketing"]) for m, v in op.items() if m in shown)
+    t["sales_cost"] = sum(float(v["cost_sales"]) for m, v in op.items() if m in shown)
     t["total_cost"] = t["marketing_cost"] + t["sales_cost"]
     t["cac"] = _div(t["total_cost"], t["sold"])
     t["avg_check"] = _div(t["platform_monthly"], t["sold"])
@@ -312,8 +297,8 @@ def _ad_by_month(f: dict) -> dict:
 
 def _opcosts_by_month() -> dict:
     rows = db.query(
-        "SELECT to_char(period_month, 'YYYY-MM') AS month, salary_sales, "
-        "salary_marketing, payroll_tax_pct FROM monthly_costs"
+        "SELECT to_char(period_month, 'YYYY-MM') AS month, cost_marketing, "
+        "cost_sales FROM monthly_costs"
     )
     return {r["month"]: r for r in rows}
 

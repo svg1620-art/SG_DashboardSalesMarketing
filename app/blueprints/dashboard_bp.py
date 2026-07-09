@@ -58,7 +58,6 @@ def months():
         options=metrics.filter_options(),
         rows=data["rows"], total=data["total"], metric_rows=metrics.MONTH_ROWS,
         ltv_months=current_app.config["APP_CONFIG"].LTV_MONTHS,
-        turnover_pct=current_app.config["APP_CONFIG"].TURNOVER_TAX_PCT,
         show_month_compare=True,
     )
 
@@ -80,8 +79,8 @@ def costs():
              FROM costs_touches ORDER BY period_month DESC, source"""
     )
     opcosts = db.query(
-        """SELECT to_char(period_month, 'YYYY-MM') AS month, salary_sales,
-                  salary_marketing, payroll_tax_pct, comment
+        """SELECT to_char(period_month, 'YYYY-MM') AS month, cost_marketing,
+                  cost_sales, comment
              FROM monthly_costs ORDER BY period_month DESC"""
     )
     sources = db.query("SELECT name FROM sources WHERE is_active ORDER BY name")
@@ -149,17 +148,15 @@ def costs_operating_save():
         flash("Укажите месяц", "error")
         return redirect(url_for("dashboard.costs"))
     db.execute(
-        """INSERT INTO monthly_costs (period_month, salary_sales, salary_marketing,
-               payroll_tax_pct, comment, created_by)
-           VALUES (%s, %s, %s, %s, %s, %s)
+        """INSERT INTO monthly_costs (period_month, cost_marketing, cost_sales,
+               comment, created_by)
+           VALUES (%s, %s, %s, %s, %s)
            ON CONFLICT (period_month) DO UPDATE
-               SET salary_sales = EXCLUDED.salary_sales,
-                   salary_marketing = EXCLUDED.salary_marketing,
-                   payroll_tax_pct = EXCLUDED.payroll_tax_pct,
+               SET cost_marketing = EXCLUDED.cost_marketing,
+                   cost_sales = EXCLUDED.cost_sales,
                    comment = EXCLUDED.comment, updated_at = now()""",
-        (month, _num_or(request.form.get("salary_sales")),
-         _num_or(request.form.get("salary_marketing")),
-         _num_or(request.form.get("payroll_tax_pct")),
+        (month, _num_or(request.form.get("cost_marketing")),
+         _num_or(request.form.get("cost_sales")),
          (request.form.get("comment") or "").strip() or None, g.user["id"]),
     )
     flash("Операционные затраты сохранены", "success")

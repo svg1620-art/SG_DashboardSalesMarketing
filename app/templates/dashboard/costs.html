@@ -50,17 +50,16 @@
   </div>
 </section>
 
-<!-- Операционные затраты месяца -->
+<!-- Затраты по месяцам: маркетинг и отдел продаж (для CAC) -->
 <section class="panel">
-  <h2>Операционные затраты месяца (для CAC)</h2>
-  <p class="muted footnote" style="margin-top:0">Зарплаты и налог на ФОТ. В CAC добавляются реклама (сверху) и налог с оборота (авто от выручки).</p>
+  <h2>Затраты по месяцам (маркетинг / отдел продаж)</h2>
+  <p class="muted footnote" style="margin-top:0">Прямые тоталы как в листе «Воронка по месяцам». Маркетинг уже включает рекламу и ЗП маркетинга; отдел продаж — ЗП продаж и налоги. CAC = (маркетинг + продажи) ÷ продажи.</p>
 
   {% if can_edit %}
   <form method="post" action="{{ url_for('dashboard.costs_operating_save') }}" class="cost-form">
     <div class="filter-field"><label>Месяц</label><input type="month" name="month" required></div>
-    <div class="filter-field"><label>ЗП отдела продаж, ₽</label><input type="number" step="any" name="salary_sales" value="0"></div>
-    <div class="filter-field"><label>ЗП маркетинга, ₽</label><input type="number" step="any" name="salary_marketing" value="0"></div>
-    <div class="filter-field"><label>Налог на ФОТ, %</label><input type="number" step="any" name="payroll_tax_pct" value="0"></div>
+    <div class="filter-field"><label>Расходы на маркетинг, ₽</label><input type="number" step="any" name="cost_marketing" value="0"></div>
+    <div class="filter-field"><label>Расходы на продажи, ₽</label><input type="number" step="any" name="cost_sales" value="0"></div>
     <div class="filter-field"><label>Комментарий</label><input type="text" name="comment"></div>
     <div class="filter-actions"><button class="btn-primary btn-inline" type="submit">Сохранить</button></div>
   </form>
@@ -68,14 +67,13 @@
 
   <div class="table-scroll">
     <table class="data-table">
-      <thead><tr><th>Месяц</th><th>ЗП продаж</th><th>ЗП маркетинг</th><th>Налог ФОТ, %</th><th>Комментарий</th>{% if can_edit %}<th></th>{% endif %}</tr></thead>
+      <thead><tr><th>Месяц</th><th>Маркетинг</th><th>Отдел продаж</th><th>Комментарий</th>{% if can_edit %}<th></th>{% endif %}</tr></thead>
       <tbody>
         {% for r in opcosts %}
         <tr>
           <td class="mono">{{ r.month }}</td>
-          <td class="mono">{{ r.salary_sales|money }}</td>
-          <td class="mono">{{ r.salary_marketing|money }}</td>
-          <td class="mono">{{ r.payroll_tax_pct|ratio }}%</td>
+          <td class="mono">{{ r.cost_marketing|money }}</td>
+          <td class="mono">{{ r.cost_sales|money }}</td>
           <td class="muted">{{ r.comment or '' }}</td>
           {% if can_edit %}<td>
             <form method="post" action="{{ url_for('dashboard.costs_operating_delete', month=r.month) }}"
@@ -83,7 +81,7 @@
           </td>{% endif %}
         </tr>
         {% else %}
-        <tr><td colspan="6" class="muted">Пока нет операционных затрат.</td></tr>
+        <tr><td colspan="5" class="muted">Пока нет затрат по месяцам.</td></tr>
         {% endfor %}
       </tbody>
     </table>
