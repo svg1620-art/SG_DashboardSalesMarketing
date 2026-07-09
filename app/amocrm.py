@@ -39,21 +39,45 @@ class AmoCRMClient:
         self._timeout = timeout
 
     def _get(self, path: str, params: dict | None = None) -> dict:
-        url = f"{self.base_url}{path}"
-        try:
-            resp = httpx.get(url, headers=self._headers, params=params, timeout=self._timeout)
-        except httpx.HTTPError as exc:
-            raise AmoCRMError(f"Сетевая ошибка при обращении к amoCRM: {exc}") from exc
-        if resp.status_code == 401:
-            raise AmoCRMError("amoCRM вернул 401 — недействительный токен")
-        if resp.status_code == 204:
-            return {}
-        if resp.status_code >= 400:
-            raise AmoCRMError(f"amoCRM вернул {resp.status_code}: {resp.text[:300]}")
-        try:
-            return resp.json()
-        except ValueError as exc:
-            raise AmoCRMError(f"Не удалось разобрать JSON от amoCRM: {exc}") from exc
+        """GET по относительному пути или абсолютному URL (для _links.next)."""
+        url = path if path.startswith("http") else f"{self.base_url}{path}"
+        last_exc = None
+        for attempt in range(4):
+            try:
+                resp = httpx.get(url, headers=self._headers, params=params,
+                                 timeout=self._timeout)
+            except httpx.HTTPError as exc:
+                last_exc = exc
+                continue  # сетевые сбои — повтор
+            if resp.status_code == 401:
+                raise AmoCRMError("amoCRM вернул 401 — недействительный токен")
+            if resp.status_code == 204:
+                return {}
+            if resp.status_code == 429:
+                continue  # лимит запросов — повтор
+            if resp.status_code >= 400:
+                raise AmoCRMError(f"amoCRM вернул {resp.status_code}: {resp.text[:300]}")
+            try:
+                return resp.json()
+            except ValueError as exc:
+                raise AmoCRMError(f"Не удалось разобрать JSON от amoCRM: {exc}") from exc
+        raise AmoCRMError(f"Сетевая ошибка при обращении к amoCRM: {last_exc}")
+
+    def _paginate(self, path: str, params: dict, embedded_key: str):
+        """Генератор по страницам с обходом _links.next (ТЗ §6)."""
+        page_params = dict(params or {})
+        page_params.setdefault("limit", 250)
+        next_url = None
+        while True:
+            data = self._get(next_url or path, None if next_url else page_params)
+            if not data:  # 204 — данных больше нет
+                break
+            items = data.get("_embedded", {}).get(embedded_key, [])
+            for item in items:
+                yield item
+            next_url = data.get("_links", {}).get("next", {}).get("href")
+            if not next_url or not items:
+                break
 
     # --- Проверочные вызовы Stage 1 ---
 
@@ -88,6 +112,39 @@ class AmoCRMClient:
             "available": True,
             "earliest_created_at": events[0].get("created_at"),
         }
+
+
+    # --- Данные для синхронизации Stage 2 ---
+
+    def users(self) -> list[dict]:
+        """GET /users — сопоставление responsible_user_id → имя менеджера."""
+        return list(self._paginate("/users", {"limit": 250}, "users"))
+
+    def custom_fields(self) -> list[dict]:
+        """GET /leads/custom_fields — определение ID кастомных полей."""
+        return list(self._paginate("/leads/custom_fields", {"limit": 250}, "custom_fields"))
+
+    def iter_leads(self, pipeline_id: int | None = None):
+        """GET /leads постранично. limit=250, обход по _links.next."""
+        params = {"limit": 250, "with": "contacts"}
+        if pipeline_id is not None:
+            params["filter[pipeline_id]"] = pipeline_id
+        yield from self._paginate("/leads", params, "leads")
+
+    def iter_status_events(self, created_from: int | None = None,
+                           created_to: int | None = None):
+        """GET /events (lead_status_changed) постранично по диапазону дат."""
+        params = {
+            "filter[type]": "lead_status_changed",
+            "filter[entity]": "lead",
+            "order[created_at]": "asc",
+            "limit": 100,
+        }
+        if created_from is not None:
+            params["filter[created_at][from]"] = created_from
+        if created_to is not None:
+            params["filter[created_at][to]"] = created_to
+        yield from self._paginate("/events", params, "events")
 
 
 def client_from_config(config) -> AmoCRMClient:

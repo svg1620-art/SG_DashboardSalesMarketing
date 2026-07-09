@@ -13,6 +13,11 @@ def create_app(config: Config | None = None) -> Flask:
 
     if cfg.DATABASE_URL:
         db.init_pool(cfg.DATABASE_URL)
+        try:
+            from .scheduler import init_scheduler
+            init_scheduler(cfg)
+        except Exception as exc:  # noqa: BLE001 — планировщик не должен ронять веб
+            app.logger.warning("Планировщик не запущен: %s", exc)
 
     # Освобождение соединения и загрузка пользователя
     app.teardown_appcontext(db.put_conn)

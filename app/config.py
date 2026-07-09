@@ -21,6 +21,13 @@ class Config:
 
     AMOCRM_SUBDOMAIN = os.environ.get("AMOCRM_SUBDOMAIN", "")
     AMOCRM_TOKEN = os.environ.get("AMOCRM_TOKEN", "")
+    # Целевая воронка (по умолчанию «Воронка1»); переопределяется переменной
+    AMOCRM_PIPELINE_ID = int(os.environ.get("AMOCRM_PIPELINE_ID", "3807"))
+    # Год, с которого тянем историю при первичном бэкофилле (ТЗ §6)
+    BACKFILL_SINCE_YEAR = int(os.environ.get("BACKFILL_SINCE_YEAR", "2023"))
+    # Ежедневный автосинк (APScheduler); час по UTC
+    SYNC_HOUR_UTC = int(os.environ.get("SYNC_HOUR_UTC", "2"))
+    ENABLE_SCHEDULER = os.environ.get("ENABLE_SCHEDULER", "1") == "1"
 
     BOOTSTRAP_ADMIN_EMAIL = os.environ.get("BOOTSTRAP_ADMIN_EMAIL")
     BOOTSTRAP_ADMIN_PASSWORD = os.environ.get("BOOTSTRAP_ADMIN_PASSWORD")

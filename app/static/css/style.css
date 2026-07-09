@@ -128,3 +128,19 @@ a:hover { text-decoration: underline; }
 }
 .btn-primary:hover { opacity: .92; text-decoration: none; }
 .panel.center .btn-primary { width: auto; margin-top: 16px; }
+
+/* Синхронизация */
+.sync-actions { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
+.btn-inline { width: auto; margin-top: 0; }
+.btn-secondary {
+  padding: 11px 16px; border: 1px solid var(--border); border-radius: 8px;
+  background: var(--surface-2); color: var(--text); font-family: var(--font);
+  font-weight: 600; font-size: 15px; cursor: pointer;
+}
+.btn-secondary:hover { border-color: var(--blue); }
+.btn-primary:disabled, .btn-secondary:disabled { opacity: .5; cursor: default; }
+.sync-progress { font-size: 14px; padding: 10px 0; }
+.sync-progress .err { color: var(--danger); font-weight: 700; }
+.status-ok { color: var(--success); }
+.status-error { color: var(--danger); }
+.status-running { color: var(--cyan); }

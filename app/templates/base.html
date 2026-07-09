@@ -18,6 +18,9 @@
     {% if current_user %}
     <nav class="topnav">
       <a href="{{ url_for('dashboard.index') }}">Дашборды</a>
+      {% if current_user.role in ['admin', 'marketer'] %}
+      <a href="{{ url_for('admin.sync_page') }}">Синхронизация</a>
+      {% endif %}
       {% if current_user.role == 'admin' %}
       <a href="{{ url_for('admin.amocrm_check') }}">amoCRM</a>
       {% endif %}

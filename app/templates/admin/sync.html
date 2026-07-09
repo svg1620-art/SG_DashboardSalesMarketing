@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+{% block title %}Синхронизация — {{ app_name }}{% endblock %}
+{% block content %}
+<h1 class="page-title">Синхронизация с amoCRM</h1>
+
+<section class="panel">
+  <div class="sync-actions">
+    <button id="btn-run" class="btn-primary btn-inline">Обновить сейчас</button>
+    {% if current_user.role == 'admin' %}
+    <button id="btn-backfill" class="btn-secondary">Первичный бэкофилл (вся история)</button>
+    {% endif %}
+  </div>
+  <div id="progress" class="sync-progress muted">Статус загружается…</div>
+</section>
+
+<section class="panel">
+  <h2>Данные в базе</h2>
+  <table class="data-table">
+    <tr><td>Сделки</td><td class="mono">{{ stats.deals }}</td></tr>
+    <tr><td>События (история)</td><td class="mono">{{ stats.events }}</td></tr>
+    <tr><td>Менеджеры</td><td class="mono">{{ stats.managers }}</td></tr>
+    <tr><td>Источники</td><td class="mono">{{ stats.sources }}</td></tr>
+    <tr><td>Статусы воронки</td><td class="mono">{{ stats.statuses }}</td></tr>
+  </table>
+</section>
+
+<section class="panel">
+  <h2>Журнал запусков</h2>
+  <table class="data-table">
+    <thead><tr><th>Старт</th><th>Финиш</th><th>Сделок</th><th>Событий</th><th>Статус</th><th>Сообщение</th></tr></thead>
+    <tbody>
+      {% for l in logs %}
+      <tr>
+        <td class="mono">{{ l.started_at.strftime('%Y-%m-%d %H:%M') if l.started_at }}</td>
+        <td class="mono">{{ l.finished_at.strftime('%H:%M:%S') if l.finished_at else '—' }}</td>
+        <td class="mono">{{ l.deals_synced }}</td>
+        <td class="mono">{{ l.events_synced }}</td>
+        <td><span class="status-{{ l.status }}">{{ l.status }}</span></td>
+        <td class="muted">{{ l.message }}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="6" class="muted">Синхронизаций ещё не было.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+
+<script>
+const progressEl = document.getElementById('progress');
+const btnRun = document.getElementById('btn-run');
+const btnBackfill = document.getElementById('btn-backfill');
+let polling = false;
+
+function render(p) {
+  if (p.running) {
+    progressEl.innerHTML = `<b>Идёт синхронизация</b> · этап: ${p.phase} · ` +
+      `сделок: ${p.deals_done}${p.deals_total ? '/' + p.deals_total : ''} · ` +
+      `событий: ${p.events_done} — ${p.message || ''}`;
+  } else if (p.error) {
+    progressEl.innerHTML = `<span class="err">Ошибка:</span> ${p.error}`;
+  } else if (p.finished_at) {
+    progressEl.innerHTML = `Готово: ${p.message}. <a href="">Обновить страницу</a>`;
+  } else {
+    progressEl.textContent = 'Простаивает. Нажмите «Обновить сейчас».';
+  }
+}
+
+async function poll() {
+  try {
+    const r = await fetch('{{ url_for("admin.sync_progress") }}');
+    const p = await r.json();
+    render(p);
+    if (p.running) { setTimeout(poll, 2000); }
+    else { polling = false; setButtons(false); }
+  } catch (e) { polling = false; setButtons(false); }
+}
+
+function setButtons(disabled) {
+  btnRun.disabled = disabled;
+  if (btnBackfill) btnBackfill.disabled = disabled;
+}
+
+async function start(url) {
+  setButtons(true);
+  const r = await fetch(url, { method: 'POST' });
+  if (r.status === 409) { alert('Синхронизация уже идёт'); }
+  if (!polling) { polling = true; poll(); }
+}
+
+btnRun.addEventListener('click', () => start('{{ url_for("admin.sync_run") }}'));
+if (btnBackfill) btnBackfill.addEventListener('click', () => {
+  if (confirm('Запустить полный бэкофилл всей истории? Может занять время.')) {
+    start('{{ url_for("admin.sync_backfill") }}');
+  }
+});
+poll();
+</script>
+{% endblock %}
