@@ -39,6 +39,10 @@ class Config:
 
     APP_NAME = "DashboardSales&Marketing"
 
+    # Юнит-экономика (ТЗ §3, уточнено заказчиком)
+    TURNOVER_TAX_PCT = float(os.environ.get("TURNOVER_TAX_PCT", "6"))  # налог с оборота, %
+    LTV_MONTHS = int(os.environ.get("LTV_MONTHS", "21"))              # расчётный срок жизни клиента
+
     @property
     def amocrm_base_url(self) -> str:
         return f"https://{self.AMOCRM_SUBDOMAIN}.amocrm.ru/api/v4"

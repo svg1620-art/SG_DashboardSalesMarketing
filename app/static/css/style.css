@@ -179,3 +179,12 @@ a:hover { text-decoration: underline; }
 .metrics-table thead .sticky-col { z-index: 2; }
 .total-row { background: var(--surface-2); font-weight: 700; }
 .total-row .sticky-col { background: var(--surface-2); color: var(--cyan); }
+
+/* Формы ввода затрат */
+.cost-form { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end;
+  margin-bottom: 18px; padding-bottom: 16px; border-bottom: 1px solid var(--border); }
+.cost-form input { padding: 8px 10px; background: var(--bg); border: 1px solid var(--border);
+  border-radius: 8px; color: var(--text); font-family: var(--font); font-size: 14px; min-width: 120px; }
+.cost-form input:focus { outline: none; border-color: var(--blue); }
+.link-del { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 15px; }
+.link-del:hover { color: var(--danger); }
