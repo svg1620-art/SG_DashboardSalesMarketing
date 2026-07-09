@@ -24,7 +24,6 @@ CF_PATTERNS = {
     "monthly_payment": ["ежемесяч"],
     "sum_platform": ["платформ"],
     "sum_implementation": ["внедрен"],
-    "sum_manager": ["работа менеджера", "оплата менеджер"],
     "sum_courses": ["курс"],
     "license_months": ["срок лицензии", "лиценз"],
 }
