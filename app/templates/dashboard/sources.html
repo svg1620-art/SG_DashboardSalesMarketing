@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+{% block title %}По источникам — {{ app_name }}{% endblock %}
+{% block content %}
+{% include "dashboard/_tabs.html" %}
+{% include "dashboard/_filters.html" %}
+
+<section class="panel">
+  <h2>Воронка{% if filters.source %} · {{ filters.source }}{% endif %}</h2>
+  <div class="funnel-wrap"><canvas id="funnelChart" height="120"></canvas></div>
+</section>
+
+<section class="panel">
+  <h2>Метрики по источникам</h2>
+  <div class="table-scroll">
+    <table class="data-table metrics-table">
+      <thead>
+        <tr>
+          <th class="sticky-col">Источник</th>
+          <th>MQL</th><th>SQL</th><th>Встр. назн.</th><th>Встр. пров.</th>
+          <th>Счета</th><th>Продажи</th>
+          <th>MQL→SQL</th><th>Доходимость</th><th>%&nbsp;неквала</th>
+          <th>Затраты</th><th>CPL</th><th>Цена встречи</th><th>Цена продажи</th>
+          <th>Выручка</th><th>ROAS</th><th>Ср.&nbsp;чек</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% macro row(r, cls='') -%}
+        <tr class="{{ cls }}">
+          <td class="sticky-col">{{ r.source }}</td>
+          <td class="mono">{{ r.mql|num }}</td>
+          <td class="mono">{{ r.sql|num }}</td>
+          <td class="mono">{{ r.meeting_scheduled|num }}</td>
+          <td class="mono">{{ r.meeting_held|num }}</td>
+          <td class="mono">{{ r.invoiced|num }}</td>
+          <td class="mono">{{ r.sold|num }}</td>
+          <td class="mono">{{ r.cr_mql_sql|pct }}</td>
+          <td class="mono">{{ r.reachability|pct }}</td>
+          <td class="mono">{{ r.unqual_pct|pct }}</td>
+          <td class="mono">{{ r.amount|money }}</td>
+          <td class="mono">{{ r.cpl|money }}</td>
+          <td class="mono">{{ r.price_meeting|money }}</td>
+          <td class="mono">{{ r.price_sale|money }}</td>
+          <td class="mono">{{ r.revenue|money }}</td>
+          <td class="mono">{{ r.roas|ratio }}</td>
+          <td class="mono">{{ r.avg_check|money }}</td>
+        </tr>
+        {%- endmacro %}
+        {{ row(total, 'total-row') }}
+        {% for r in rows %}{{ row(r) }}{% endfor %}
+        {% if not rows %}
+        <tr><td colspan="17" class="muted">Нет данных под фильтр.</td></tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+  <p class="muted footnote">Затраты и cost-метрики появятся после ввода данных на вкладке «Затраты и касания» (Stage 6).</p>
+</section>
+
+<script src="{{ url_for('static', filename='vendor/chart.umd.min.js') }}"></script>
+<script>
+const FUNNEL = {{ funnel|tojson }};
+const ctx = document.getElementById('funnelChart');
+if (ctx && window.Chart) {
+  new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: FUNNEL.labels,
+      datasets: [{
+        data: FUNNEL.values,
+        backgroundColor: ['#1467F5','#1f74f0','#1a9be0','#12b1d8','#0abfd0','#00BFDC'],
+        borderRadius: 6,
+      }],
+    },
+    options: {
+      indexAxis: 'y',
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { color: '#8A8A99' }, grid: { color: 'rgba(255,255,255,.06)' } },
+        y: { ticks: { color: '#EDEDF2' }, grid: { display: false } },
+      },
+    },
+  });
+}
+</script>
+{% endblock %}

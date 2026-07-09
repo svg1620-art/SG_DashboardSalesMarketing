@@ -1,0 +1,38 @@
+<form class="filters-panel dash-filters" method="get">
+  <div class="filter-field">
+    <label>Период с</label>
+    <input type="date" name="date_from" value="{{ filters.date_from or '' }}"
+           min="{{ options.min_date or '' }}" max="{{ options.max_date or '' }}">
+  </div>
+  <div class="filter-field">
+    <label>по</label>
+    <input type="date" name="date_to" value="{{ filters.date_to or '' }}"
+           min="{{ options.min_date or '' }}" max="{{ options.max_date or '' }}">
+  </div>
+  <div class="filter-field">
+    <label>Менеджер</label>
+    <select name="manager_id">
+      <option value="">Все</option>
+      {% for m in options.managers %}
+      <option value="{{ m.amo_user_id }}" {{ 'selected' if filters.manager_id == m.amo_user_id }}>{{ m.name }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="filter-field">
+    <label>Источник</label>
+    <select name="source">
+      <option value="">Все</option>
+      {% for s in options.sources %}
+      <option value="{{ s.name }}" {{ 'selected' if filters.source == s.name }}>{{ s.name }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="filter-field">
+    <label>Воронка</label>
+    <select disabled><option>Воронка 1</option></select>
+  </div>
+  <div class="filter-actions">
+    <button type="submit" class="btn-primary btn-inline">Применить</button>
+    <a class="btn-secondary" href="{{ url_for(request.endpoint) }}">Сбросить</a>
+  </div>
+</form>

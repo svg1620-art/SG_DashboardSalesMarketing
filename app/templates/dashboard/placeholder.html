@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}{{ title }} — {{ app_name }}{% endblock %}
+{% block content %}
+{% include "dashboard/_tabs.html" %}
+{% include "dashboard/_filters.html" %}
+<section class="panel center">
+  <h2>{{ title }}</h2>
+  <p class="tab-stage">Stage {{ stage }}</p>
+  <p class="muted">Эта вкладка в разработке. Панель фильтров уже активна и будет применяться к данным.</p>
+</section>
+{% endblock %}

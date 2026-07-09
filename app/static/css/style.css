@@ -144,3 +144,38 @@ a:hover { text-decoration: underline; }
 .status-ok { color: var(--success); }
 .status-error { color: var(--danger); }
 .status-running { color: var(--cyan); }
+
+/* Дашборд: вкладки */
+.dash-tabs { display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 18px;
+  border-bottom: 1px solid var(--border); }
+.dash-tab { padding: 10px 16px; color: var(--muted); font-weight: 600; font-size: 14px;
+  border-bottom: 2px solid transparent; margin-bottom: -1px; }
+.dash-tab:hover { color: var(--text); text-decoration: none; }
+.dash-tab.active { color: var(--text); border-bottom-color: var(--cyan); }
+
+/* Дашборд: панель фильтров */
+.dash-filters { flex-wrap: wrap; gap: 14px; align-items: flex-end; }
+.filter-field { display: flex; flex-direction: column; gap: 4px; }
+.filter-field label { font-size: 12px; color: var(--muted); }
+.filter-field input, .filter-field select {
+  padding: 8px 10px; background: var(--bg); border: 1px solid var(--border);
+  border-radius: 8px; color: var(--text); font-family: var(--font); font-size: 14px;
+  min-width: 120px;
+}
+.filter-field input:focus, .filter-field select:focus { outline: none; border-color: var(--blue); }
+.filter-field select:disabled { opacity: .6; }
+.filter-actions { display: flex; gap: 8px; align-items: flex-end; }
+
+/* Дашборд: воронка */
+.funnel-wrap { position: relative; }
+
+/* Дашборд: таблица метрик */
+.table-scroll { overflow-x: auto; }
+.metrics-table { min-width: 1200px; font-size: 13px; white-space: nowrap; }
+.metrics-table th { position: sticky; top: 0; background: var(--surface); }
+.metrics-table td, .metrics-table th { padding: 8px 10px; }
+.sticky-col { position: sticky; left: 0; background: var(--surface); z-index: 1;
+  font-weight: 600; }
+.metrics-table thead .sticky-col { z-index: 2; }
+.total-row { background: var(--surface-2); font-weight: 700; }
+.total-row .sticky-col { background: var(--surface-2); color: var(--cyan); }

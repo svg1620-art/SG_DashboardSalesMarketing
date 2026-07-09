@@ -1,0 +1,6 @@
+<div class="dash-tabs">
+  {% for t in tabs %}
+  <a href="{{ url_for(t.endpoint, **request.args) }}"
+     class="dash-tab {{ 'active' if t.key == active }}">{{ t.title }}</a>
+  {% endfor %}
+</div>
