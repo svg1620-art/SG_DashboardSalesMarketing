@@ -173,7 +173,14 @@ a:hover { text-decoration: underline; }
 .table-scroll { overflow-x: auto; }
 .metrics-table { min-width: 1200px; font-size: 13px; white-space: nowrap; }
 .metrics-table th { position: sticky; top: 0; background: var(--surface); }
-.metrics-table td, .metrics-table th { padding: 8px 10px; }
+.metrics-table td, .metrics-table th { padding: 8px 12px; text-align: right;
+  border-right: 1px solid var(--border); }
+.metrics-table td:last-child, .metrics-table th:last-child { border-right: none; }
+.metrics-table th.sticky-col, .metrics-table td.sticky-col { text-align: left; }
+/* Толще разделитель после блока воронки (после «Продажи», 7-я колонка) */
+.metrics-table td:nth-child(7), .metrics-table th:nth-child(7) { border-right: 2px solid var(--blue); }
+/* и после блока конверсий (после «% неквала», 10-я колонка) */
+.metrics-table td:nth-child(10), .metrics-table th:nth-child(10) { border-right: 2px solid var(--blue); }
 .sticky-col { position: sticky; left: 0; background: var(--surface); z-index: 1;
   font-weight: 600; }
 .metrics-table thead .sticky-col { z-index: 2; }

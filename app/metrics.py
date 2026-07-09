@@ -103,14 +103,28 @@ def by_source(f: dict) -> dict:
         _add_derived(r)
         result_rows.append(r)
 
+    # Итого — по всем источникам (до скрытия пустых), чтобы KPI были полными
     total = _totals(result_rows, f)
+
+    # Скрываем «мёртвые» источники: ни одного результата дальше лида и без выручки
+    result_rows = [r for r in result_rows if _source_has_activity(r)]
+
+    values = [total["mql"], total["sql"], total["meeting_scheduled"],
+              total["meeting_held"], total["invoiced"], total["sold"]]
     funnel = {
         "labels": ["Лиды (MQL)", "Возможности (SQL)", "Назначено встреч",
                    "Проведено встреч", "Выставлено счетов", "Продажи"],
-        "values": [total["mql"], total["sql"], total["meeting_scheduled"],
-                   total["meeting_held"], total["invoiced"], total["sold"]],
+        "values": values,
+        # поэтапная конверсия каждого этапа к предыдущему (для подписей на диаграмме)
+        "conv": [None] + [_div(values[i], values[i - 1]) for i in range(1, len(values))],
     }
     return {"rows": result_rows, "total": total, "funnel": funnel}
+
+
+def _source_has_activity(r: dict) -> bool:
+    """Есть ли у источника хоть один результат дальше лида или выручка."""
+    return bool(r["sql"] or r["meeting_scheduled"] or r["meeting_held"]
+                or r["invoiced"] or r["sold"] or r["revenue"])
 
 
 def by_month(f: dict, config) -> dict:
@@ -338,13 +352,17 @@ def _add_derived(r: dict) -> None:
     r["cr_meeting_sale"] = _div(r["sold"], r["meeting_held"])
     r["unqual_pct"] = _div(r["unqualified"], mql)
     r["cr_mql_sale"] = _div(r["sold"], mql)
-    # cost-метрики (нужны затраты)
+    # cost-метрики требуют введённых затрат; без них показываем «—», а не «0 ₽»
     amount = r["amount"]
-    r["cpl"] = _div(amount, mql)
-    r["price_meeting"] = _div(amount, r["meeting_scheduled"])
-    r["price_reached"] = _div(amount, r["meeting_held"])
-    r["price_sale"] = _div(amount, r["sold"])
-    r["roas"] = _div(r["revenue"], amount)
+    if amount:
+        r["cpl"] = _div(amount, mql)
+        r["price_meeting"] = _div(amount, r["meeting_scheduled"])
+        r["price_reached"] = _div(amount, r["meeting_held"])
+        r["price_sale"] = _div(amount, r["sold"])
+        r["roas"] = _div(r["revenue"], amount)
+    else:
+        r["cpl"] = r["price_meeting"] = r["price_reached"] = None
+        r["price_sale"] = r["roas"] = None
     r["avg_check"] = _div(r["revenue"], r["sold"])
 
 

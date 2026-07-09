@@ -53,13 +53,42 @@
       </tbody>
     </table>
   </div>
-  <p class="muted footnote">Затраты и cost-метрики появятся после ввода данных на вкладке «Затраты и касания» (Stage 6).</p>
+  <p class="muted footnote">Затраты и cost-метрики (CPL, цена встречи/продажи, ROAS) появляются после ввода бюджетов на вкладке «Затраты и касания»; без затрат — «—». Источники без результата дальше лида скрыты, но строка «Все источники» учитывает их.</p>
 </section>
 
 <script src="{{ url_for('static', filename='vendor/chart.umd.min.js') }}"></script>
 <script>
 const FUNNEL = {{ funnel|tojson }};
 const ctx = document.getElementById('funnelChart');
+
+// Ярче: насыщенный градиент синий → циан → мятный по этапам воронки
+const STAGE_COLORS = ['#3B82F6','#2E9BF7','#18B4F0','#0AC6E0','#00D6C4','#26E0A0'];
+
+// Подписи на столбцах: количество + конверсия к предыдущему этапу
+const stageLabels = {
+  id: 'stageLabels',
+  afterDatasetsDraw(chart) {
+    const {ctx} = chart;
+    const meta = chart.getDatasetMeta(0);
+    ctx.save();
+    ctx.font = '600 13px "JetBrains Mono", monospace';
+    ctx.textBaseline = 'middle';
+    meta.data.forEach((bar, i) => {
+      const val = FUNNEL.values[i].toLocaleString('ru-RU');
+      const conv = FUNNEL.conv[i];
+      const x = bar.x + 10, y = bar.y;
+      ctx.fillStyle = '#FFFFFF';
+      ctx.fillText(val, x, y);
+      if (conv != null) {
+        const w = ctx.measureText(val).width;
+        ctx.fillStyle = '#8A8A99';
+        ctx.fillText('  ' + (conv * 100).toFixed(1).replace('.', ',') + '%', x + w, y);
+      }
+    });
+    ctx.restore();
+  }
+};
+
 if (ctx && window.Chart) {
   new Chart(ctx, {
     type: 'bar',
@@ -67,18 +96,22 @@ if (ctx && window.Chart) {
       labels: FUNNEL.labels,
       datasets: [{
         data: FUNNEL.values,
-        backgroundColor: ['#1467F5','#1f74f0','#1a9be0','#12b1d8','#0abfd0','#00BFDC'],
-        borderRadius: 6,
+        backgroundColor: STAGE_COLORS,
+        borderRadius: 8,
+        barPercentage: 0.72,
       }],
     },
     options: {
       indexAxis: 'y',
-      plugins: { legend: { display: false } },
+      layout: { padding: { right: 96 } },
+      animation: { duration: 500 },
+      plugins: { legend: { display: false }, tooltip: { enabled: false } },
       scales: {
-        x: { ticks: { color: '#8A8A99' }, grid: { color: 'rgba(255,255,255,.06)' } },
-        y: { ticks: { color: '#EDEDF2' }, grid: { display: false } },
+        x: { ticks: { color: '#8A8A99' }, grid: { color: 'rgba(255,255,255,.05)' }, border: { display: false } },
+        y: { ticks: { color: '#EDEDF2', font: { size: 13, weight: '600' } }, grid: { display: false }, border: { display: false } },
       },
     },
+    plugins: [stageLabels],
   });
 }
 </script>
