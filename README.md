@@ -50,8 +50,10 @@ python wsgi.py                  # http://localhost:8000
 
 ## Деплой на Railway
 
-`railway.json` при старте прогоняет миграции и поднимает gunicorn. Секреты и
-`DATABASE_URL` задаются через Variables. Файловая система эфемерна — всё в БД.
+`railway.json` при старте прогоняет миграции, создаёт/обновляет администратора
+из `BOOTSTRAP_ADMIN_EMAIL`/`BOOTSTRAP_ADMIN_PASSWORD` (идемпотентно) и поднимает
+gunicorn. Секреты и `DATABASE_URL` задаются через Variables. Файловая система
+эфемерна — всё в БД.
 
 ## Структура
 
