@@ -3,6 +3,8 @@
 На Stage 1 используется для проверки токена/доступности и реальной глубины
 истории событий (events), от которой зависит объём фолбэка (ТЗ §6, §11).
 """
+import re
+
 import httpx
 
 
@@ -10,10 +12,25 @@ class AmoCRMError(Exception):
     pass
 
 
+def normalize_subdomain(raw: str) -> str:
+    """Оставляет только сам субдомен из любого разумного ввода.
+
+    Терпит `https://`, хвост `.amocrm.ru`/`.amocrm.com`, слэши и пробелы —
+    чтобы неверный формат переменной не приводил к DNS-ошибке.
+    """
+    s = (raw or "").strip()
+    s = re.sub(r"^https?://", "", s, flags=re.IGNORECASE)  # убрать схему
+    s = s.split("/")[0]                                     # убрать путь
+    s = re.sub(r"\.amocrm\.(ru|com)$", "", s, flags=re.IGNORECASE)  # убрать домен
+    return s.strip().strip(".")
+
+
 class AmoCRMClient:
     def __init__(self, subdomain: str, token: str, timeout: float = 30.0):
+        subdomain = normalize_subdomain(subdomain)
         if not subdomain or not token:
             raise AmoCRMError("Не заданы AMOCRM_SUBDOMAIN / AMOCRM_TOKEN")
+        self.subdomain = subdomain
         self.base_url = f"https://{subdomain}.amocrm.ru/api/v4"
         self._headers = {
             "Authorization": f"Bearer {token}",
