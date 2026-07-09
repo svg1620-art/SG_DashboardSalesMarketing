@@ -124,6 +124,7 @@ def by_month(f: dict, config) -> dict:
         f"""SELECT to_char(date_trunc('month', d.created_at), 'YYYY-MM') AS month,
                 {_COUNTS},
                 COALESCE(sum(d.sum_platform) FILTER (WHERE d.sold), 0) AS platform_revenue,
+                COALESCE(sum(d.monthly_payment) FILTER (WHERE d.sold), 0) AS platform_monthly,
                 COALESCE(avg(d.monthly_payment) FILTER (WHERE d.sold
                     AND d.monthly_payment IS NOT NULL), 0) AS arppu,
                 COALESCE(avg(d.license_months) FILTER (WHERE d.sold), 0) AS lic_months
@@ -207,6 +208,7 @@ MONTH_ROWS = [
 def _coerce_month(r: dict) -> None:
     r["revenue"] = float(r["revenue"] or 0)
     r["platform_revenue"] = float(r["platform_revenue"] or 0)
+    r["platform_monthly"] = float(r["platform_monthly"] or 0)
     r["arppu"] = float(r["arppu"] or 0)
     r["lic_months"] = float(r["lic_months"] or 0)
 
@@ -237,8 +239,8 @@ def _add_unit_economics(r: dict, ad_spend: float, oc, config) -> None:
     r["total_cost"] = total_cost
 
     r["cac"] = _div(total_cost, won)
-    # средний чек = выручка по платформе (разовая) / клиенты; LTV = × срок жизни
-    r["avg_check"] = _div(r["platform_revenue"], won)
+    # средний чек = средний ежемесячный платёж на клиента; LTV = × срок жизни
+    r["avg_check"] = _div(r["platform_monthly"], won)
     r["ltv"] = r["avg_check"] * config.LTV_MONTHS if r["avg_check"] is not None else None
     r["ltv_cac"] = _div(r["ltv"], r["cac"]) if r["cac"] else None
     r["roas"] = _div(r["revenue"], ad_spend)
@@ -248,7 +250,7 @@ def _add_unit_economics(r: dict, ad_spend: float, oc, config) -> None:
 
 def _month_totals(rows: list, ad: dict, op: dict, config) -> dict:
     keys = ["mql", "sql", "meeting_scheduled", "meeting_held", "invoiced",
-            "sold", "unqualified", "revenue", "platform_revenue"]
+            "sold", "unqualified", "revenue", "platform_revenue", "platform_monthly"]
     t = {k: 0 for k in keys}
     for r in rows:
         for k in keys:
@@ -270,7 +272,7 @@ def _month_totals(rows: list, ad: dict, op: dict, config) -> dict:
     t["sales_cost"] = salary_sales_total + payroll + turnover
     t["total_cost"] = t["marketing_cost"] + t["sales_cost"]
     t["cac"] = _div(t["total_cost"], t["sold"])
-    t["avg_check"] = _div(t["platform_revenue"], t["sold"])
+    t["avg_check"] = _div(t["platform_monthly"], t["sold"])
     t["ltv"] = t["avg_check"] * config.LTV_MONTHS if t["avg_check"] is not None else None
     t["ltv_cac"] = _div(t["ltv"], t["cac"]) if t["cac"] else None
     t["roas"] = _div(t["revenue"], ad_total)
