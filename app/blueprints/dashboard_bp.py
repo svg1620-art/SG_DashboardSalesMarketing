@@ -190,4 +190,22 @@ def deals():
 @dashboard_bp.route("/dashboard/export")
 @login_required
 def export():
-    return _placeholder("export", 7)
+    return render_template(
+        "dashboard/export.html",
+        tabs=TABS, active="export", filters=metrics.parse_filters(request.args),
+        options=metrics.filter_options(),
+    )
+
+
+@dashboard_bp.route("/dashboard/export.xlsx")
+@login_required
+def export_xlsx():
+    from flask import send_file
+    from .. import export as export_mod
+    f = metrics.parse_filters(request.args)
+    buf = export_mod.build_workbook(f, current_app.config["APP_CONFIG"])
+    return send_file(
+        buf, as_attachment=True,
+        download_name="DashboardSalesMarketing.xlsx",
+        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    )

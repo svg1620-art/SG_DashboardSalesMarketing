@@ -53,5 +53,6 @@
   <div class="filter-actions">
     <button type="submit" class="btn-primary btn-inline">Применить</button>
     <a class="btn-secondary" href="{{ url_for(request.endpoint) }}">Сбросить</a>
+    <a class="btn-secondary" href="{{ url_for('dashboard.export_xlsx', **request.args) }}" title="Выгрузить текущий вид в Excel">⬇ Excel</a>
   </div>
 </form>

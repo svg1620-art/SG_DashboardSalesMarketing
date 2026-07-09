@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}Экспорт — {{ app_name }}{% endblock %}
+{% block content %}
+{% include "dashboard/_tabs.html" %}
+{% include "dashboard/_filters.html" %}
+
+<section class="panel">
+  <h2>Экспорт в Excel</h2>
+  <p class="muted">Выгрузка учитывает активные фильтры (период / менеджер / источник). Значения без формул, готовые форматы чисел.</p>
+  <p><a class="btn-primary btn-inline" href="{{ url_for('dashboard.export_xlsx', **request.args) }}">⬇ Скачать .xlsx</a></p>
+  <table class="data-table" style="max-width:520px;margin-top:8px">
+    <thead><tr><th>Лист</th><th>Содержимое</th></tr></thead>
+    <tbody>
+      <tr><td>По источникам</td><td class="muted">метрики и cost-метрики по источникам</td></tr>
+      <tr><td>По месяцам</td><td class="muted">когортная воронка + юнит-экономика</td></tr>
+      <tr><td>По менеджерам</td><td class="muted">конверсии по менеджерам</td></tr>
+      <tr><td>Сделки</td><td class="muted">плоская выгрузка сделок за период</td></tr>
+      <tr><td>Реклама (затраты)</td><td class="muted">введённые бюджеты по источникам</td></tr>
+      <tr><td>Затраты по месяцам</td><td class="muted">расходы на маркетинг и продажи</td></tr>
+    </tbody>
+  </table>
+</section>
+{% endblock %}
