@@ -31,6 +31,25 @@
     <label>Воронка</label>
     <select disabled><option>Воронка 1</option></select>
   </div>
+  {% if show_month_compare %}
+  <div class="filter-field">
+    <label>Месяц года (все годы)</label>
+    <select name="month_of_year">
+      <option value="">—</option>
+      {% for i, nm in [(1,'Январь'),(2,'Февраль'),(3,'Март'),(4,'Апрель'),(5,'Май'),(6,'Июнь'),(7,'Июль'),(8,'Август'),(9,'Сентябрь'),(10,'Октябрь'),(11,'Ноябрь'),(12,'Декабрь')] %}
+      <option value="{{ i }}" {{ 'selected' if filters.month_of_year == i }}>{{ nm }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="filter-field">
+    <label>Или выбрать месяцы (Ctrl+клик)</label>
+    <select name="months" multiple size="4" class="months-multi">
+      {% for m in options.months %}
+      <option value="{{ m }}" {{ 'selected' if m in filters.months }}>{{ m }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  {% endif %}
   <div class="filter-actions">
     <button type="submit" class="btn-primary btn-inline">Применить</button>
     <a class="btn-secondary" href="{{ url_for(request.endpoint) }}">Сбросить</a>

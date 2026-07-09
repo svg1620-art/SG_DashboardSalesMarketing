@@ -4,58 +4,51 @@
 {% include "dashboard/_tabs.html" %}
 {% include "dashboard/_filters.html" %}
 
+{% macro cell(kind, val) -%}
+  {%- if kind == 'num' -%}{{ val|num }}
+  {%- elif kind == 'money' -%}{{ val|money }}
+  {%- elif kind in ['pct', 'conv'] -%}{{ val|pct }}
+  {%- elif kind == 'ratio' -%}{{ val|ratio }}
+  {%- else -%}{{ val }}{%- endif -%}
+{%- endmacro %}
+
 <section class="panel">
   <h2>По месяцам · когортная воронка и юнит-экономика</h2>
   <p class="muted footnote" style="margin-top:0">
     Метрики привязаны к месяцу <b>создания</b> лида и догоняются по мере закрытия сделок.
-    LTV = средний чек (по платформе) × {{ ltv_months }}. Налог с оборота — {{ turnover_pct }}% от выручки.
+    Месяцы — по горизонтали, метрики — по вертикали. LTV = средний чек (по платформе) × {{ ltv_months }}.
+    Налог с оборота — {{ turnover_pct }}% от выручки. Выберите «месяц года» или несколько месяцев в фильтрах для сравнения динамики.
   </p>
   <div class="table-scroll">
-    <table class="data-table metrics-table">
+    <table class="data-table months-matrix">
       <thead>
         <tr>
-          <th class="sticky-col">Месяц</th>
-          <th>MQL</th><th>SQL</th><th>Встр. назн.</th><th>Встр. пров.</th>
-          <th>Счета</th><th>Продажи</th>
-          <th>MQL→прод.</th><th>Доходимость</th>
-          <th>Выручка</th><th>Реклама</th><th>Затраты∑</th>
-          <th>CAC</th><th>Ср.&nbsp;чек</th><th>LTV</th><th>LTV:CAC</th><th>ROAS</th>
+          <th class="sticky-col">Метрика</th>
+          <th class="total-col">Итого</th>
+          {% for r in rows %}<th class="mono">{{ r.month }}</th>{% endfor %}
         </tr>
       </thead>
       <tbody>
-        {% macro mrow(r, cls='') -%}
-        <tr class="{{ cls }}">
-          <td class="sticky-col mono">{{ r.month }}</td>
-          <td class="mono">{{ r.mql|num }}</td>
-          <td class="mono">{{ r.sql|num }}</td>
-          <td class="mono">{{ r.meeting_scheduled|num }}</td>
-          <td class="mono">{{ r.meeting_held|num }}</td>
-          <td class="mono">{{ r.invoiced|num }}</td>
-          <td class="mono">{{ r.sold|num }}</td>
-          <td class="mono">{{ r.cr_mql_sale|pct }}</td>
-          <td class="mono">{{ r.reachability|pct }}</td>
-          <td class="mono">{{ r.revenue|money }}</td>
-          <td class="mono">{{ r.ad_spend|money }}</td>
-          <td class="mono">{{ r.total_cost|money }}</td>
-          <td class="mono">{{ r.cac|money }}</td>
-          <td class="mono">{{ r.avg_check|money }}</td>
-          <td class="mono">{{ r.ltv|money }}</td>
-          <td class="mono">{{ r.ltv_cac|ratio }}</td>
-          <td class="mono">{{ r.roas|ratio }}</td>
-        </tr>
-        {%- endmacro %}
-        {{ mrow(total, 'total-row') }}
-        {% for r in rows %}{{ mrow(r) }}{% endfor %}
+        {% for kind, label, key in metric_rows %}
+          {% if kind == 'section' %}
+          <tr class="section-row"><td class="sticky-col" colspan="{{ rows|length + 2 }}">{{ label }}</td></tr>
+          {% else %}
+          <tr class="{{ 'conv-row' if kind == 'conv' }}">
+            <td class="sticky-col">{{ label }}</td>
+            <td class="mono total-col">{{ cell(kind, total[key]) }}</td>
+            {% for r in rows %}<td class="mono">{{ cell(kind, r[key]) }}</td>{% endfor %}
+          </tr>
+          {% endif %}
+        {% endfor %}
         {% if not rows %}
-        <tr><td colspan="17" class="muted">Нет данных под фильтр.</td></tr>
+        <tr><td class="muted" colspan="2">Нет данных под фильтр.</td></tr>
         {% endif %}
       </tbody>
     </table>
   </div>
   <p class="muted footnote">
-    CAC, LTV:CAC и ROAS появляются после ввода затрат на вкладке «Затраты и касания»
-    (реклама по источникам + операционные затраты месяца). ARPPU по ежемесячному
-    платежу и «оплаченные месяцы» — на следующих итерациях.
+    Строки с конверсией (курсив) показывают переход между соседними этапами.
+    CAC / LTV / ROAS появляются после ввода затрат на вкладке «Затраты и касания».
   </p>
 </section>
 {% endblock %}

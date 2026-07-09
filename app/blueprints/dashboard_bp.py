@@ -56,9 +56,10 @@ def months():
         "dashboard/months.html",
         tabs=TABS, active="months", filters=f,
         options=metrics.filter_options(),
-        rows=data["rows"], total=data["total"],
+        rows=data["rows"], total=data["total"], metric_rows=metrics.MONTH_ROWS,
         ltv_months=current_app.config["APP_CONFIG"].LTV_MONTHS,
         turnover_pct=current_app.config["APP_CONFIG"].TURNOVER_TAX_PCT,
+        show_month_compare=True,
     )
 
 

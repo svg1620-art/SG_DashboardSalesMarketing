@@ -23,11 +23,21 @@ def parse_filters(args) -> dict:
         raw = (args.get(key) or "").strip()
         return int(raw) if raw.isdigit() else None
 
+    # Явно выбранные месяцы для сравнения (multiselect) — 'YYYY-MM'
+    if hasattr(args, "getlist"):
+        months = [m.strip() for m in args.getlist("months") if m.strip()]
+    else:
+        months = [m for m in (args.get("months") or "").split(",") if m.strip()]
+    moy_raw = (args.get("month_of_year") or "").strip()
+    month_of_year = int(moy_raw) if moy_raw.isdigit() and 1 <= int(moy_raw) <= 12 else None
+
     return {
         "date_from": _d("date_from"),
         "date_to": _d("date_to"),
         "manager_id": _i("manager_id"),
         "source": (args.get("source") or "").strip() or None,
+        "months": months,
+        "month_of_year": month_of_year,
     }
 
 
@@ -125,16 +135,71 @@ def by_month(f: dict, config) -> dict:
     ad = _ad_by_month(f)
     op = _opcosts_by_month()
 
-    out = []
+    by_key = {}
     for r in rows:
         r = dict(r)
         _coerce_month(r)
-        _add_unit_economics(r, ad.get(r["month"], 0.0),
-                            op.get(r["month"]), config)
-        out.append(r)
+        _add_unit_economics(r, ad.get(r["month"], 0.0), op.get(r["month"]), config)
+        _add_step_conversions(r)
+        by_key[r["month"]] = r
+
+    # Выбор и порядок отображаемых месяцев
+    display = _select_months(by_key, f)
+    out = [by_key[m] for m in display]
 
     total = _month_totals(out, ad, op, config)
+    _add_step_conversions(total)
     return {"rows": out, "total": total}
+
+
+def _select_months(by_key: dict, f: dict) -> list:
+    """Определяет, какие месяцы показать и в каком порядке."""
+    all_months = sorted(by_key)
+    if f.get("months"):
+        return [m for m in f["months"] if m in by_key]
+    if f.get("month_of_year"):
+        mm = f"{f['month_of_year']:02d}"
+        return [m for m in all_months if m.endswith("-" + mm)]
+    return all_months
+
+
+def _add_step_conversions(r: dict) -> None:
+    """Поэтапные конверсии между соседними этапами (§3)."""
+    r["cr_mql_sql"] = _div(r["sql"], r["mql"])
+    r["cr_sql_scheduled"] = _div(r["meeting_scheduled"], r["sql"])
+    r["cr_scheduled_held"] = _div(r["meeting_held"], r["meeting_scheduled"])  # доходимость
+    r["cr_held_invoiced"] = _div(r["invoiced"], r["meeting_held"])
+    r["cr_invoiced_sold"] = _div(r["sold"], r["invoiced"])
+    r["unqual_pct"] = _div(r["unqualified"], r["mql"])
+
+
+# Строки транспонированной таблицы «По месяцам»: (тип, подпись, ключ)
+# тип: section | num | conv | pct | money | ratio
+MONTH_ROWS = [
+    ("section", "Воронка", None),
+    ("num", "Лиды (MQL)", "mql"),
+    ("conv", "MQL → SQL", "cr_mql_sql"),
+    ("num", "Возможности (SQL)", "sql"),
+    ("conv", "SQL → Встреча назн.", "cr_sql_scheduled"),
+    ("num", "Назначено встреч", "meeting_scheduled"),
+    ("conv", "Доходимость (назн→пров)", "cr_scheduled_held"),
+    ("num", "Проведено встреч", "meeting_held"),
+    ("conv", "Встреча → Счёт", "cr_held_invoiced"),
+    ("num", "Выставлено счетов", "invoiced"),
+    ("conv", "Счёт → Продажа", "cr_invoiced_sold"),
+    ("num", "Продажи", "sold"),
+    ("conv", "MQL → Продажа", "cr_mql_sale"),
+    ("pct", "% неквала", "unqual_pct"),
+    ("section", "Экономика", None),
+    ("money", "Выручка", "revenue"),
+    ("money", "Реклама", "ad_spend"),
+    ("money", "Затраты ∑", "total_cost"),
+    ("money", "CAC", "cac"),
+    ("money", "Средний чек", "avg_check"),
+    ("money", "LTV", "ltv"),
+    ("ratio", "LTV:CAC", "ltv_cac"),
+    ("ratio", "ROAS", "roas"),
+]
 
 
 def _coerce_month(r: dict) -> None:
@@ -293,6 +358,11 @@ def filter_options() -> dict:
         "SELECT min(created_at)::date AS min_d, max(created_at)::date AS max_d FROM deals",
         fetchone=True,
     )
+    months = db.query(
+        """SELECT DISTINCT to_char(date_trunc('month', created_at), 'YYYY-MM') AS m
+             FROM deals WHERE created_at IS NOT NULL ORDER BY m DESC"""
+    )
     return {"managers": managers, "sources": sources,
+            "months": [r["m"] for r in months],
             "min_date": bounds["min_d"] if bounds else None,
             "max_date": bounds["max_d"] if bounds else None}

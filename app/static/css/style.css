@@ -180,6 +180,20 @@ a:hover { text-decoration: underline; }
 .total-row { background: var(--surface-2); font-weight: 700; }
 .total-row .sticky-col { background: var(--surface-2); color: var(--cyan); }
 
+/* Матрица «По месяцам» (метрики × месяцы) */
+.months-matrix { min-width: 640px; font-size: 13px; white-space: nowrap; }
+.months-matrix th, .months-matrix td { padding: 7px 14px; text-align: right; }
+.months-matrix th.sticky-col, .months-matrix td.sticky-col { text-align: left; }
+.months-matrix thead th { position: sticky; top: 0; background: var(--surface); z-index: 1; }
+.months-matrix .sticky-col { position: sticky; left: 0; background: var(--surface); z-index: 1; }
+.months-matrix thead .sticky-col { z-index: 3; }
+.months-matrix .total-col { color: var(--cyan); background: var(--surface-2); }
+.months-matrix .section-row td { background: var(--surface-2); color: var(--muted);
+  text-transform: uppercase; font-size: 11px; letter-spacing: 0.05em; font-weight: 700; }
+.months-matrix .conv-row td { color: var(--muted); font-style: italic; font-size: 12px; }
+.months-matrix .conv-row .sticky-col { padding-left: 26px; }
+.months-multi { min-width: 140px; padding: 4px 6px; }
+
 /* Формы ввода затрат */
 .cost-form { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end;
   margin-bottom: 18px; padding-bottom: 16px; border-bottom: 1px solid var(--border); }
