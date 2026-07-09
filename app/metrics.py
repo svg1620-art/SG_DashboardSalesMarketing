@@ -193,6 +193,8 @@ MONTH_ROWS = [
     ("section", "Экономика", None),
     ("money", "Выручка", "revenue"),
     ("money", "Реклама", "ad_spend"),
+    ("money", "Затраты: маркетинг", "marketing_cost"),
+    ("money", "Затраты: отдел продаж", "sales_cost"),
     ("money", "Затраты ∑", "total_cost"),
     ("money", "CAC", "cac"),
     ("money", "Средний чек", "avg_check"),
@@ -216,16 +218,22 @@ def _add_unit_economics(r: dict, ad_spend: float, oc, config) -> None:
     salary_marketing = float(oc["salary_marketing"]) if oc else 0.0
     payroll_tax_pct = float(oc["payroll_tax_pct"]) if oc else 0.0
 
-    salaries = salary_sales + salary_marketing
-    payroll_tax = salaries * payroll_tax_pct / 100.0
+    payroll_tax = (salary_sales + salary_marketing) * payroll_tax_pct / 100.0
     turnover_tax = r["revenue"] * config.TURNOVER_TAX_PCT / 100.0
-    total_cost = salaries + payroll_tax + ad_spend + turnover_tax
+
+    # Разбивка (уточнение заказчика): маркетинг = реклама + ЗП маркетинга;
+    # отдел продаж = ЗП продаж + все налоги (на ФОТ и с оборота).
+    marketing_cost = ad_spend + salary_marketing
+    sales_cost = salary_sales + payroll_tax + turnover_tax
+    total_cost = marketing_cost + sales_cost
 
     r["ad_spend"] = ad_spend
     r["salary_sales"] = salary_sales
     r["salary_marketing"] = salary_marketing
     r["payroll_tax"] = payroll_tax
     r["turnover_tax"] = turnover_tax
+    r["marketing_cost"] = marketing_cost
+    r["sales_cost"] = sales_cost
     r["total_cost"] = total_cost
 
     r["cac"] = _div(total_cost, won)
@@ -248,16 +256,20 @@ def _month_totals(rows: list, ad: dict, op: dict, config) -> dict:
     t["month"] = "Итого"
     t["arppu"] = _div(sum(r["arppu"] * r["sold"] for r in rows), t["sold"]) or 0
     t["lic_months"] = _div(sum(r["lic_months"] * r["sold"] for r in rows), t["sold"]) or 0
-    ad_total = sum(ad.values())
-    # суммарные операционные затраты по всем месяцам
-    salaries = sum(float(v["salary_sales"]) + float(v["salary_marketing"]) for v in op.values())
+    # суммарные затраты по отображаемым месяцам (только по показанным столбцам)
+    shown = {r["month"] for r in rows}
+    ad_total = sum(v for m, v in ad.items() if m in shown)
+    salary_sales_total = sum(float(v["salary_sales"]) for m, v in op.items() if m in shown)
+    salary_marketing_total = sum(float(v["salary_marketing"]) for m, v in op.items() if m in shown)
     payroll = sum((float(v["salary_sales"]) + float(v["salary_marketing"]))
-                  * float(v["payroll_tax_pct"]) / 100.0 for v in op.values())
+                  * float(v["payroll_tax_pct"]) / 100.0 for m, v in op.items() if m in shown)
     turnover = t["revenue"] * config.TURNOVER_TAX_PCT / 100.0
-    total_cost = salaries + payroll + ad_total + turnover
+
     t["ad_spend"] = ad_total
-    t["total_cost"] = total_cost
-    t["cac"] = _div(total_cost, t["sold"])
+    t["marketing_cost"] = ad_total + salary_marketing_total
+    t["sales_cost"] = salary_sales_total + payroll + turnover
+    t["total_cost"] = t["marketing_cost"] + t["sales_cost"]
+    t["cac"] = _div(t["total_cost"], t["sold"])
     t["avg_check"] = _div(t["platform_revenue"], t["sold"])
     t["ltv"] = t["avg_check"] * config.LTV_MONTHS if t["avg_check"] is not None else None
     t["ltv_cac"] = _div(t["ltv"], t["cac"]) if t["cac"] else None
