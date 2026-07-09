@@ -12,6 +12,14 @@
   {%- else -%}{{ val }}{%- endif -%}
 {%- endmacro %}
 
+{# Ячейка конверсии с подсветкой динамики к предыдущему месяцу #}
+{% macro conv_cell(cur, prev) -%}
+  {%- if cur is none -%}<span class="muted">—</span>
+  {%- elif prev is not none and cur > prev -%}<span class="conv-up">{{ cur|pct }}&nbsp;▲</span>
+  {%- elif prev is not none and cur < prev -%}<span class="conv-down">{{ cur|pct }}&nbsp;▼</span>
+  {%- else -%}{{ cur|pct }}{%- endif -%}
+{%- endmacro %}
+
 <section class="panel">
   <h2>По месяцам · когортная воронка и юнит-экономика</h2>
   <p class="muted footnote" style="margin-top:0">
@@ -32,8 +40,17 @@
         {% for kind, label, key in metric_rows %}
           {% if kind == 'section' %}
           <tr class="section-row"><td class="sticky-col" colspan="{{ rows|length + 2 }}">{{ label }}</td></tr>
+          {% elif kind == 'conv' %}
+          <tr class="conv-row">
+            <td class="sticky-col">{{ label }}</td>
+            <td class="mono total-col">{{ cell(kind, total[key]) }}</td>
+            {% for r in rows %}
+              {% set prev = rows[loop.index0 - 1] if loop.index0 > 0 else none %}
+              <td class="mono">{{ conv_cell(r[key], prev[key] if prev else none) }}</td>
+            {% endfor %}
+          </tr>
           {% else %}
-          <tr class="{{ 'conv-row' if kind == 'conv' }}">
+          <tr>
             <td class="sticky-col">{{ label }}</td>
             <td class="mono total-col">{{ cell(kind, total[key]) }}</td>
             {% for r in rows %}<td class="mono">{{ cell(kind, r[key]) }}</td>{% endfor %}

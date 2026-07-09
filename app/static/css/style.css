@@ -192,6 +192,8 @@ a:hover { text-decoration: underline; }
   text-transform: uppercase; font-size: 11px; letter-spacing: 0.05em; font-weight: 700; }
 .months-matrix .conv-row td { color: var(--muted); font-style: italic; font-size: 12px; }
 .months-matrix .conv-row .sticky-col { padding-left: 26px; }
+.months-matrix .conv-up { color: var(--success); font-style: normal; font-weight: 600; }
+.months-matrix .conv-down { color: var(--danger); font-style: normal; font-weight: 600; }
 .months-multi { min-width: 140px; padding: 4px 6px; }
 
 /* Формы ввода затрат */
