@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}Пользователи — {{ app_name }}{% endblock %}
+{% block content %}
+<h1 class="page-title">Пользователи</h1>
+
+<section class="panel">
+  <h2>Новый пользователь</h2>
+  <form method="post" action="{{ url_for('admin.users_create') }}" class="cost-form">
+    <div class="filter-field"><label>Email</label><input type="email" name="email" required></div>
+    <div class="filter-field"><label>Пароль (≥8)</label><input type="text" name="password" required></div>
+    <div class="filter-field"><label>Роль</label>
+      <select name="role">
+        {% for r in roles %}<option value="{{ r }}">{{ role_labels[r] }}</option>{% endfor %}
+      </select>
+    </div>
+    <div class="filter-actions"><button class="btn-primary btn-inline" type="submit">Создать</button></div>
+  </form>
+  <p class="muted footnote" style="margin-top:0">Роли: <b>Администратор</b> — всё + пользователи + синхронизация; <b>Маркетолог</b> — дашборды + ввод затрат + «Обновить»; <b>Читатель</b> — только просмотр и экспорт.</p>
+</section>
+
+<section class="panel">
+  <h2>Все пользователи</h2>
+  {# Формы держим вне таблицы; поля привязываем по атрибуту form=... #}
+  {% for u in users %}
+  <form id="edit-{{ u.id }}" method="post" action="{{ url_for('admin.users_update', user_id=u.id) }}"></form>
+  <form id="del-{{ u.id }}" method="post" action="{{ url_for('admin.users_delete', user_id=u.id) }}" onsubmit="return confirm('Удалить {{ u.email }}?')"></form>
+  {% endfor %}
+
+  <div class="table-scroll">
+    <table class="data-table">
+      <thead><tr><th>Email</th><th>Роль</th><th>Активен</th><th>Новый пароль</th><th></th><th></th></tr></thead>
+      <tbody>
+        {% for u in users %}
+        {% set me = (u.id == current_user.id) %}
+        <tr>
+          <td>{{ u.email }}{% if me %} <span class="muted">(вы)</span>{% endif %}</td>
+          <td>
+            <select name="role" form="edit-{{ u.id }}" {{ 'disabled' if me }}>
+              {% for r in roles %}<option value="{{ r }}" {{ 'selected' if u.role == r }}>{{ role_labels[r] }}</option>{% endfor %}
+            </select>
+            {% if me %}<input type="hidden" name="role" value="{{ u.role }}" form="edit-{{ u.id }}">{% endif %}
+          </td>
+          <td>
+            <input type="checkbox" name="is_active" form="edit-{{ u.id }}" {{ 'checked' if u.is_active }} {{ 'disabled' if me }}>
+            {% if me %}<input type="hidden" name="is_active" value="on" form="edit-{{ u.id }}">{% endif %}
+          </td>
+          <td><input type="text" name="password" form="edit-{{ u.id }}" placeholder="оставьте пустым" style="min-width:150px"></td>
+          <td><button class="btn-secondary btn-inline" type="submit" form="edit-{{ u.id }}">Сохранить</button></td>
+          <td>{% if not me %}<button class="link-del" type="submit" form="del-{{ u.id }}">✕</button>{% endif %}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}

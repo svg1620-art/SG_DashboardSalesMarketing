@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}По менеджерам — {{ app_name }}{% endblock %}
+{% block content %}
+{% include "dashboard/_tabs.html" %}
+{% include "dashboard/_filters.html" %}
+
+<section class="panel">
+  <h2>Метрики по менеджерам</h2>
+  <div class="table-scroll">
+    <table class="data-table metrics-table">
+      <thead>
+        <tr>
+          <th class="sticky-col">Менеджер</th>
+          <th>MQL</th><th>SQL</th><th>Встр. назн.</th><th>Встр. пров.</th>
+          <th>Счета</th><th>Продажи</th>
+          <th>MQL→SQL</th><th>Доходимость</th><th>MQL→прод.</th><th>%&nbsp;неквала</th>
+          <th>Выручка</th><th>Ср.&nbsp;чек</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% macro row(r, cls='') -%}
+        <tr class="{{ cls }}">
+          <td class="sticky-col">{{ r.manager }}</td>
+          <td class="mono">{{ r.mql|num }}</td>
+          <td class="mono">{{ r.sql|num }}</td>
+          <td class="mono">{{ r.meeting_scheduled|num }}</td>
+          <td class="mono">{{ r.meeting_held|num }}</td>
+          <td class="mono">{{ r.invoiced|num }}</td>
+          <td class="mono">{{ r.sold|num }}</td>
+          <td class="mono">{{ r.cr_mql_sql|pct }}</td>
+          <td class="mono">{{ r.reachability|pct }}</td>
+          <td class="mono">{{ r.cr_mql_sale|pct }}</td>
+          <td class="mono">{{ r.unqual_pct|pct }}</td>
+          <td class="mono">{{ r.revenue|money }}</td>
+          <td class="mono">{{ r.avg_check|money }}</td>
+        </tr>
+        {%- endmacro %}
+        {{ row(total, 'total-row') }}
+        {% for r in rows %}{{ row(r) }}{% endfor %}
+        {% if not rows %}
+        <tr><td colspan="13" class="muted">Нет данных под фильтр.</td></tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+  <p class="muted footnote">
+    Cost-метрики (CPL, цена встречи/продажи, ROAS) в разрезе менеджеров не считаются:
+    затраты привязаны к источнику, а не к менеджеру (ограничение методики §4).
+    Для помесячного разреза используйте фильтр периода.
+  </p>
+</section>
+{% endblock %}

@@ -127,6 +127,38 @@ def _source_has_activity(r: dict) -> bool:
                 or r["invoiced"] or r["sold"] or r["revenue"])
 
 
+def by_manager(f: dict) -> dict:
+    """Метрики по менеджерам (ТЗ §4, вкладка 3).
+
+    Только количественные метрики и конверсии — cost-метрики (CPL, цена
+    встречи/продажи, ROAS) в разрезе менеджеров не считаются: затраты
+    привязаны к источнику, а не к менеджеру (ограничение методики §4).
+    """
+    where, params = _deal_where(f)
+    rows = db.query(
+        f"""SELECT COALESCE(m.name,
+                   CASE WHEN d.responsible_user_id IS NULL THEN '(не назначен)'
+                        ELSE 'ID ' || d.responsible_user_id::text END) AS manager,
+                {_COUNTS}
+             FROM deals d
+             LEFT JOIN managers m ON m.amo_user_id = d.responsible_user_id
+             WHERE {where} GROUP BY 1 ORDER BY mql DESC""",
+        params,
+    )
+    result_rows = []
+    for r in rows:
+        r = dict(r)
+        r["revenue"] = float(r["revenue"] or 0)
+        r["amount"] = 0.0
+        r["touches"] = 0
+        _add_derived(r)
+        result_rows.append(r)
+
+    total = _totals(result_rows, f)
+    total["manager"] = "Все менеджеры"
+    return {"rows": result_rows, "total": total}
+
+
 def by_month(f: dict, config) -> dict:
     """Помесячная когортная воронка + юнит-экономика (ТЗ §3).
 

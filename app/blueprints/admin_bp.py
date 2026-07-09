@@ -1,10 +1,11 @@
-"""Административные операции: проверка amoCRM, запуск синхронизации, логи."""
+"""Административные операции: проверка amoCRM, синхронизация, пользователи."""
 from flask import (
-    Blueprint, current_app, jsonify, redirect, render_template, url_for,
+    Blueprint, current_app, flash, g, jsonify, redirect, render_template,
+    request, url_for,
 )
 
 from ..amocrm import AmoCRMError, client_from_config
-from ..auth import role_required
+from ..auth import hash_password, role_required
 from .. import db, sync
 
 admin_bp = Blueprint("admin", __name__, url_prefix="/admin")
@@ -97,3 +98,90 @@ def sync_backfill():
 def sync_progress():
     """JSON-статус для опроса фронтендом."""
     return jsonify(sync.PROGRESS.snapshot())
+
+
+# --- Управление пользователями (ТЗ §5: только admin) ---
+
+ROLES = ("admin", "marketer", "viewer")
+ROLE_LABELS = {"admin": "Администратор", "marketer": "Маркетолог", "viewer": "Читатель"}
+
+
+@admin_bp.route("/users")
+@role_required("admin")
+def users():
+    rows = db.query(
+        "SELECT id, email, role, is_active, created_at FROM app_users ORDER BY created_at"
+    )
+    return render_template("admin/users.html", users=rows, roles=ROLES,
+                           role_labels=ROLE_LABELS)
+
+
+@admin_bp.route("/users/create", methods=["POST"])
+@role_required("admin")
+def users_create():
+    email = (request.form.get("email") or "").strip().lower()
+    password = request.form.get("password") or ""
+    role = request.form.get("role") or ""
+    if not email or "@" not in email:
+        flash("Укажите корректный email", "error")
+    elif len(password) < 8:
+        flash("Пароль не короче 8 символов", "error")
+    elif role not in ROLES:
+        flash("Некорректная роль", "error")
+    else:
+        existing = db.query("SELECT id FROM app_users WHERE email = %s", (email,),
+                            fetchone=True)
+        if existing:
+            flash("Пользователь с таким email уже есть", "error")
+        else:
+            db.execute(
+                "INSERT INTO app_users (email, password_hash, role) VALUES (%s, %s, %s)",
+                (email, hash_password(password), role),
+            )
+            flash(f"Пользователь {email} создан", "success")
+    return redirect(url_for("admin.users"))
+
+
+@admin_bp.route("/users/<int:user_id>/update", methods=["POST"])
+@role_required("admin")
+def users_update(user_id):
+    row = db.query("SELECT id, role, is_active FROM app_users WHERE id = %s",
+                   (user_id,), fetchone=True)
+    if not row:
+        flash("Пользователь не найден", "error")
+        return redirect(url_for("admin.users"))
+
+    role = request.form.get("role") or row["role"]
+    is_active = request.form.get("is_active") == "on"
+    new_password = request.form.get("password") or ""
+
+    # Защита от самоблокировки: нельзя снять с себя админа или деактивировать себя
+    if user_id == g.user["id"] and (role != "admin" or not is_active):
+        flash("Нельзя понизить или отключить собственную учётку", "error")
+        return redirect(url_for("admin.users"))
+    if role not in ROLES:
+        flash("Некорректная роль", "error")
+        return redirect(url_for("admin.users"))
+
+    if new_password:
+        if len(new_password) < 8:
+            flash("Пароль не короче 8 символов", "error")
+            return redirect(url_for("admin.users"))
+        db.execute("UPDATE app_users SET password_hash = %s WHERE id = %s",
+                   (hash_password(new_password), user_id))
+
+    db.execute("UPDATE app_users SET role = %s, is_active = %s WHERE id = %s",
+               (role, is_active, user_id))
+    flash("Изменения сохранены", "success")
+    return redirect(url_for("admin.users"))
+
+
+@admin_bp.route("/users/<int:user_id>/delete", methods=["POST"])
+@role_required("admin")
+def users_delete(user_id):
+    if user_id == g.user["id"]:
+        flash("Нельзя удалить собственную учётку", "error")
+        return redirect(url_for("admin.users"))
+    db.execute("DELETE FROM app_users WHERE id = %s", (user_id,))
+    flash("Пользователь удалён", "success")
+    return redirect(url_for("admin.users"))

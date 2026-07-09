@@ -66,7 +66,14 @@ def months():
 @dashboard_bp.route("/dashboard/managers")
 @login_required
 def managers():
-    return _placeholder("managers", 5)
+    f = metrics.parse_filters(request.args)
+    data = metrics.by_manager(f)
+    return render_template(
+        "dashboard/managers.html",
+        tabs=TABS, active="managers", filters=f,
+        options=metrics.filter_options(),
+        rows=data["rows"], total=data["total"],
+    )
 
 
 # --- Затраты и касания (ТЗ §4 вкладка 4, §5: ввод — marketer+) ---
