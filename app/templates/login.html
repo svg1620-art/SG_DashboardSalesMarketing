@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}Вход — {{ app_name }}{% endblock %}
+{% block content %}
+<div class="login-wrap">
+  <div class="login-card">
+    <div class="login-brand">
+      <span class="brand-mark"></span>
+      <h1>DashboardSales<span class="amp">&amp;</span>Marketing</h1>
+    </div>
+    <p class="login-sub">Аналитика воронки продаж</p>
+    <form method="post" action="{{ url_for('auth.login') }}">
+      <label>Email
+        <input type="email" name="email" autocomplete="username" required autofocus>
+      </label>
+      <label>Пароль
+        <input type="password" name="password" autocomplete="current-password" required>
+      </label>
+      <button type="submit" class="btn-primary">Войти</button>
+    </form>
+    <p class="login-note">Регистрация закрыта. Доступ выдаёт администратор.</p>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,39 @@
+"""Фабрика приложения DashboardSales&Marketing."""
+from flask import Flask, g
+
+from .config import Config
+from . import db, auth
+
+
+def create_app(config: Config | None = None) -> Flask:
+    cfg = config or Config()
+    app = Flask(__name__)
+    app.config.from_object(cfg)
+    app.config["APP_CONFIG"] = cfg
+
+    if cfg.DATABASE_URL:
+        db.init_pool(cfg.DATABASE_URL)
+
+    # Освобождение соединения и загрузка пользователя
+    app.teardown_appcontext(db.put_conn)
+
+    @app.before_request
+    def _load_user():
+        auth.load_current_user()
+
+    @app.context_processor
+    def _inject_globals():
+        return {"current_user": getattr(g, "user", None), "app_name": cfg.APP_NAME}
+
+    # Блюпринты
+    from .blueprints.dashboard_bp import dashboard_bp
+    from .blueprints.admin_bp import admin_bp
+    app.register_blueprint(auth.auth_bp)
+    app.register_blueprint(dashboard_bp)
+    app.register_blueprint(admin_bp)
+
+    @app.route("/healthz")
+    def healthz():
+        return {"status": "ok", "app": cfg.APP_NAME}
+
+    return app

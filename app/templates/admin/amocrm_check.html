@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}Проверка amoCRM — {{ app_name }}{% endblock %}
+{% block content %}
+<h1 class="page-title">Проверка подключения amoCRM</h1>
+
+{% if result.ok %}
+  <div class="flash flash-success">Соединение установлено, токен действителен.</div>
+
+  <section class="panel">
+    <h2>Аккаунт</h2>
+    <table class="data-table">
+      <tr><td>ID</td><td class="mono">{{ result.account.id }}</td></tr>
+      <tr><td>Название</td><td>{{ result.account.name }}</td></tr>
+      <tr><td>Субдомен</td><td class="mono">{{ result.account.subdomain }}</td></tr>
+    </table>
+  </section>
+
+  <section class="panel">
+    <h2>Воронки и статусы</h2>
+    {% for p in result.pipelines %}
+    <div class="pipeline">
+      <h3>{{ p.name }} <span class="mono muted">#{{ p.id }}</span></h3>
+      <table class="data-table">
+        <thead><tr><th>sort</th><th>Статус</th><th>status_id</th></tr></thead>
+        <tbody>
+          {% for s in p.statuses %}
+          <tr><td class="mono">{{ s.sort }}</td><td>{{ s.name }}</td><td class="mono">{{ s.id }}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% endfor %}
+  </section>
+
+  <section class="panel">
+    <h2>Глубина истории событий</h2>
+    {% if result.events.available %}
+      <p>Самое раннее событие смены статуса: <span class="mono">{{ result.events.earliest_created_at }}</span> (unix). Ниже этой даты нужен фолбэк (ТЗ §6).</p>
+    {% else %}
+      <p class="muted">События lead_status_changed не найдены — потребуется полный фолбэк по кастомным полям.</p>
+    {% endif %}
+  </section>
+{% else %}
+  <div class="flash flash-error">Ошибка: {{ result.error }}</div>
+  <p class="muted">Проверьте переменные AMOCRM_SUBDOMAIN и AMOCRM_TOKEN в окружении.</p>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block title %}Нет доступа — {{ app_name }}{% endblock %}
+{% block content %}
+<div class="panel center">
+  <h1 class="page-title">403 — недостаточно прав</h1>
+  <p class="muted">Для этого раздела нужна более высокая роль. Обратитесь к администратору.</p>
+  <a class="btn-primary" href="{{ url_for('dashboard.index') }}">На главную</a>
+</div>
+{% endblock %}

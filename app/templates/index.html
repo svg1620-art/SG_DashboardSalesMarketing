@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}Дашборды — {{ app_name }}{% endblock %}
+{% block content %}
+<div class="filters-panel">
+  <span class="filters-label">Фильтры</span>
+  <span class="muted">Период · Менеджер · Источник · Воронка 1 — панель фильтров подключается на Stage 3</span>
+</div>
+
+<div class="tabs">
+  {% for tab in tabs %}
+  <div class="tab-card">
+    <div class="tab-title">{{ tab.title }}</div>
+    <div class="tab-stage">Stage {{ tab.stage }}</div>
+    <div class="tab-status muted">в разработке</div>
+  </div>
+  {% endfor %}
+</div>
+
+<p class="muted footnote">
+  Каркас Stage 1: авторизация, роли и модель данных готовы. Дашборды наполняются на стадиях 3–8.
+</p>
+{% endblock %}
