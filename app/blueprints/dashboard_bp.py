@@ -184,7 +184,53 @@ def costs_operating_delete(month):
 @dashboard_bp.route("/dashboard/deals")
 @login_required
 def deals():
-    return _placeholder("deals", 8)
+    f = metrics.parse_filters(request.args)
+    q = (request.args.get("q") or "").strip()
+    try:
+        page = max(1, int(request.args.get("page", "1")))
+    except ValueError:
+        page = 1
+    per_page = 50
+
+    # WHERE для сделок: период/менеджер/источник + поиск (без фильтра MQL —
+    # это вкладка проверки данных, показываем всё, включая дубли)
+    clauses, params = ["TRUE"], []
+    if f.get("date_from"):
+        clauses.append("d.created_at >= %s"); params.append(f["date_from"])
+    if f.get("date_to"):
+        clauses.append("d.created_at < %s"); params.append(metrics._next_day(f["date_to"]))
+    if f.get("manager_id"):
+        clauses.append("d.responsible_user_id = %s"); params.append(f["manager_id"])
+    if f.get("source"):
+        clauses.append("d.source = %s"); params.append(f["source"])
+    if q:
+        clauses.append("(d.amo_lead_id::text = %s OR d.source ILIKE %s "
+                       "OR d.client_type ILIKE %s)")
+        params += [q, f"%{q}%", f"%{q}%"]
+    where = " AND ".join(clauses)
+
+    total_count = db.query(f"SELECT count(*) AS n FROM deals d WHERE {where}",
+                           params, fetchone=True)["n"]
+    rows = db.query(
+        f"""SELECT d.amo_lead_id, d.source, d.created_at, d.closed_at, d.price,
+                   d.client_type, d.monthly_payment, d.max_stage_reached,
+                   d.is_won, d.is_lost, d.stage_source,
+                   COALESCE(m.name, '') AS manager,
+                   COALESCE(s.name, '') AS status_name
+              FROM deals d
+              LEFT JOIN managers m ON m.amo_user_id = d.responsible_user_id
+              LEFT JOIN pipeline_statuses s ON s.status_id = d.current_status_id
+             WHERE {where}
+             ORDER BY d.created_at DESC NULLS LAST
+             LIMIT %s OFFSET %s""",
+        params + [per_page, (page - 1) * per_page],
+    )
+    pages = max(1, (total_count + per_page - 1) // per_page)
+    return render_template(
+        "dashboard/deals.html",
+        tabs=TABS, active="deals", filters=f, options=metrics.filter_options(),
+        rows=rows, q=q, page=page, pages=pages, total_count=total_count,
+    )
 
 
 @dashboard_bp.route("/dashboard/export")

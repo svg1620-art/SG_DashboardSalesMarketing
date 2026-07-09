@@ -212,3 +212,10 @@ a:hover { text-decoration: underline; }
 .cost-form input:focus { outline: none; border-color: var(--blue); }
 .link-del { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 15px; }
 .link-del:hover { color: var(--danger); }
+
+/* Вкладка «Сделки» */
+.deals-head { display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; margin-bottom: 12px; }
+.deals-search { display: flex; gap: 8px; }
+.deals-search input[type=search] { padding: 8px 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-family: var(--font); font-size: 14px; min-width: 240px; }
+.deals-search input:focus { outline: none; border-color: var(--blue); }
+.pager { display: flex; align-items: center; gap: 16px; justify-content: center; margin-top: 16px; }

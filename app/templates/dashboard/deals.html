@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}Сделки — {{ app_name }}{% endblock %}
+{% block content %}
+{% include "dashboard/_tabs.html" %}
+{% include "dashboard/_filters.html" %}
+
+<section class="panel">
+  <div class="deals-head">
+    <h2>Сделки <span class="muted">· {{ total_count|num }}</span></h2>
+    <form method="get" class="deals-search">
+      {% for k, v in request.args.items() %}{% if k not in ['q', 'page'] %}<input type="hidden" name="{{ k }}" value="{{ v }}">{% endif %}{% endfor %}
+      <input type="search" name="q" value="{{ q }}" placeholder="ID / источник / тип клиента">
+      <button class="btn-secondary btn-inline" type="submit">Найти</button>
+    </form>
+  </div>
+
+  <div class="table-scroll">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>ID</th><th>Создана</th><th>Закрыта</th><th>Источник</th>
+          <th>Менеджер</th><th>Статус</th><th>Сумма</th><th>Тип клиента</th>
+          <th>Ежемес.</th><th>Этап</th><th>Итог</th><th>Ист.&nbsp;этапа</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in rows %}
+        <tr>
+          <td class="mono">{{ r.amo_lead_id }}</td>
+          <td class="mono">{{ r.created_at.strftime('%Y-%m-%d') if r.created_at else '—' }}</td>
+          <td class="mono">{{ r.closed_at.strftime('%Y-%m-%d') if r.closed_at else '—' }}</td>
+          <td>{{ r.source or '—' }}</td>
+          <td>{{ r.manager or '—' }}</td>
+          <td class="muted">{{ r.status_name or '—' }}</td>
+          <td class="mono">{{ r.price|money }}</td>
+          <td>{{ r.client_type or '—' }}</td>
+          <td class="mono">{{ r.monthly_payment|money }}</td>
+          <td class="mono">{{ r.max_stage_reached }}</td>
+          <td>{% if r.is_won %}<span class="status-ok">продажа</span>{% elif r.is_lost %}<span class="status-error">отказ</span>{% else %}<span class="muted">в работе</span>{% endif %}</td>
+          <td class="muted">{{ 'события' if r.stage_source == 'events' else 'фолбэк' }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="12" class="muted">Ничего не найдено под фильтр.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {% if pages > 1 %}
+  <div class="pager">
+    {% set base = request.args.to_dict() %}
+    {% if page > 1 %}{% set _ = base.update({'page': page - 1}) %}<a class="btn-secondary" href="?{{ base|urlencode }}">← Назад</a>{% endif %}
+    <span class="muted">Страница {{ page }} из {{ pages }}</span>
+    {% if page < pages %}{% set _ = base.update({'page': page + 1}) %}<a class="btn-secondary" href="?{{ base|urlencode }}">Вперёд →</a>{% endif %}
+  </div>
+  {% endif %}
+</section>
+{% endblock %}
