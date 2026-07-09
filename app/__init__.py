@@ -55,6 +55,12 @@ def create_app(config: Config | None = None) -> Flask:
             return "—"
         return f"{v:.2f}".replace(".", ",")
 
+    @app.template_filter("dur")
+    def _fmt_dur(v):
+        if v is None or v == 0:
+            return "—"
+        return f"{v:.1f}".replace(".", ",")
+
     # Блюпринты
     from .blueprints.dashboard_bp import dashboard_bp
     from .blueprints.admin_bp import admin_bp

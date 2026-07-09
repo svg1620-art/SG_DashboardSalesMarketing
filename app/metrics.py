@@ -141,7 +141,14 @@ def by_month(f: dict, config) -> dict:
                 COALESCE(sum(d.monthly_payment) FILTER (WHERE d.sold), 0) AS platform_monthly,
                 COALESCE(avg(d.monthly_payment) FILTER (WHERE d.sold
                     AND d.monthly_payment IS NOT NULL), 0) AS arppu,
-                COALESCE(avg(d.license_months) FILTER (WHERE d.sold), 0) AS lic_months
+                COALESCE(avg(d.license_months) FILTER (WHERE d.sold), 0) AS lic_months,
+                -- длина сделки: число календарных месяцев от создания до закрытия
+                -- (включительно): январь→июнь = 6 (по методике заказчика)
+                COALESCE(avg(
+                    (EXTRACT(YEAR FROM d.closed_at) * 12 + EXTRACT(MONTH FROM d.closed_at))
+                  - (EXTRACT(YEAR FROM d.created_at) * 12 + EXTRACT(MONTH FROM d.created_at))
+                  + 1
+                ) FILTER (WHERE d.sold AND d.closed_at IS NOT NULL), 0) AS deal_length
              FROM deals d
              WHERE {where} AND d.created_at IS NOT NULL
              GROUP BY 1 ORDER BY 1""",
@@ -164,7 +171,18 @@ def by_month(f: dict, config) -> dict:
 
     total = _month_totals(out, ad, op, config)
     _add_step_conversions(total)
-    return {"rows": out, "total": total}
+
+    # Данные для диаграммы конверсий по месяцам (MQL→SQL и SQL→успех)
+    chart = {
+        "labels": [r["month"] for r in out],
+        "mql_sql": [_pct_or_null(r["cr_mql_sql"]) for r in out],
+        "sql_won": [_pct_or_null(r["cr_sql_sold"]) for r in out],
+    }
+    return {"rows": out, "total": total, "chart": chart}
+
+
+def _pct_or_null(v):
+    return round(v * 100, 1) if v is not None else None
 
 
 def _select_months(by_key: dict, f: dict) -> list:
@@ -185,6 +203,7 @@ def _add_step_conversions(r: dict) -> None:
     r["cr_scheduled_held"] = _div(r["meeting_held"], r["meeting_scheduled"])  # доходимость
     r["cr_held_invoiced"] = _div(r["invoiced"], r["meeting_held"])
     r["cr_invoiced_sold"] = _div(r["sold"], r["invoiced"])
+    r["cr_sql_sold"] = _div(r["sold"], r["sql"])       # SQL → успех (для диаграммы)
     r["unqual_pct"] = _div(r["unqualified"], r["mql"])
 
 
@@ -216,6 +235,7 @@ MONTH_ROWS = [
     ("money", "LTV", "ltv"),
     ("ratio", "LTV:CAC", "ltv_cac"),
     ("ratio", "ROAS", "roas"),
+    ("dur", "Длина сделки, мес", "deal_length"),
 ]
 
 
@@ -225,6 +245,7 @@ def _coerce_month(r: dict) -> None:
     r["platform_monthly"] = float(r["platform_monthly"] or 0)
     r["arppu"] = float(r["arppu"] or 0)
     r["lic_months"] = float(r["lic_months"] or 0)
+    r["deal_length"] = float(r["deal_length"] or 0)
 
 
 def _add_unit_economics(r: dict, ad_spend: float, oc, config) -> None:
@@ -263,6 +284,7 @@ def _month_totals(rows: list, ad: dict, op: dict, config) -> dict:
     t["month"] = "Итого"
     t["arppu"] = _div(sum(r["arppu"] * r["sold"] for r in rows), t["sold"]) or 0
     t["lic_months"] = _div(sum(r["lic_months"] * r["sold"] for r in rows), t["sold"]) or 0
+    t["deal_length"] = _div(sum(r["deal_length"] * r["sold"] for r in rows), t["sold"]) or 0
     # суммарные затраты по отображаемым месяцам (только по показанным столбцам)
     shown = {r["month"] for r in rows}
     ad_total = sum(v for m, v in ad.items() if m in shown)

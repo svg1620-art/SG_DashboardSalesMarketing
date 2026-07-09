@@ -57,6 +57,7 @@ def months():
         tabs=TABS, active="months", filters=f,
         options=metrics.filter_options(),
         rows=data["rows"], total=data["total"], metric_rows=metrics.MONTH_ROWS,
+        chart=data["chart"],
         ltv_months=current_app.config["APP_CONFIG"].LTV_MONTHS,
         show_month_compare=True,
     )

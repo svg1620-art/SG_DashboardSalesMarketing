@@ -4,11 +4,17 @@
 {% include "dashboard/_tabs.html" %}
 {% include "dashboard/_filters.html" %}
 
+<section class="panel">
+  <h2>Конверсия по месяцам · MQL → SQL и SQL → успех</h2>
+  <div class="chart-wrap"><canvas id="convChart" height="90"></canvas></div>
+</section>
+
 {% macro cell(kind, val) -%}
   {%- if kind == 'num' -%}{{ val|num }}
   {%- elif kind == 'money' -%}{{ val|money }}
   {%- elif kind in ['pct', 'conv'] -%}{{ val|pct }}
   {%- elif kind == 'ratio' -%}{{ val|ratio }}
+  {%- elif kind == 'dur' -%}{{ val|dur }}
   {%- else -%}{{ val }}{%- endif -%}
 {%- endmacro %}
 
@@ -65,7 +71,37 @@
   </div>
   <p class="muted footnote">
     Строки с конверсией (курсив) показывают переход между соседними этапами.
-    CAC / LTV / ROAS появляются после ввода затрат на вкладке «Затраты и касания».
+    «Длина сделки» — среднее число месяцев от создания лида до закрытия (январь→июнь = 6).
   </p>
 </section>
+
+<script src="{{ url_for('static', filename='vendor/chart.umd.min.js') }}"></script>
+<script>
+const CONV = {{ chart|tojson }};
+const cctx = document.getElementById('convChart');
+if (cctx && window.Chart && CONV.labels.length) {
+  new Chart(cctx, {
+    type: 'line',
+    data: {
+      labels: CONV.labels,
+      datasets: [
+        { label: 'MQL → SQL', data: CONV.mql_sql, borderColor: '#1467F5',
+          backgroundColor: '#1467F5', tension: 0.3, spanGaps: true, pointRadius: 3, borderWidth: 2 },
+        { label: 'SQL → успех', data: CONV.sql_won, borderColor: '#00D6C4',
+          backgroundColor: '#00D6C4', tension: 0.3, spanGaps: true, pointRadius: 3, borderWidth: 2 },
+      ],
+    },
+    options: {
+      plugins: {
+        legend: { labels: { color: '#EDEDF2', font: { size: 13 } } },
+        tooltip: { callbacks: { label: c => c.dataset.label + ': ' + c.parsed.y + '%' } },
+      },
+      scales: {
+        x: { ticks: { color: '#8A8A99' }, grid: { color: 'rgba(255,255,255,.05)' } },
+        y: { ticks: { color: '#8A8A99', callback: v => v + '%' }, grid: { color: 'rgba(255,255,255,.05)' }, beginAtZero: true },
+      },
+    },
+  });
+}
+</script>
 {% endblock %}

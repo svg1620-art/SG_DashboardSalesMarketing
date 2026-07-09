@@ -168,6 +168,7 @@ a:hover { text-decoration: underline; }
 
 /* Дашборд: воронка */
 .funnel-wrap { position: relative; }
+.chart-wrap { position: relative; }
 
 /* Дашборд: таблица метрик */
 .table-scroll { overflow-x: auto; }
