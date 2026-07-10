@@ -4,6 +4,41 @@
 {% include "dashboard/_tabs.html" %}
 {% include "dashboard/_filters.html" %}
 
+{% macro delta(d) -%}
+  {%- if d is none -%}<span class="delta delta-none">—</span>
+  {%- elif d > 0 -%}<span class="delta delta-up">▲ {{ (d * 100)|round|int }}%</span>
+  {%- elif d < 0 -%}<span class="delta delta-down">▼ {{ ((-d) * 100)|round|int }}%</span>
+  {%- else -%}<span class="delta delta-none">0%</span>{%- endif -%}
+{%- endmacro %}
+
+{% if ct_cards %}
+<section class="panel">
+  <h2>По типам клиента за период <span class="muted">· дельта к прошлому периоду той же длины</span></h2>
+  <div class="ctcards">
+    {% for c in ct_cards %}
+    <div class="ctcard" style="--accent: {{ c.color }}">
+      <div class="ctcard-head"><span class="ctcard-name">{{ c.ct }}</span></div>
+      <div class="ctcard-metric">
+        <div class="ctcard-label">Кол-во</div>
+        <div class="ctcard-val mono">{{ c.count|num }}</div>
+        {{ delta(c.count_delta) }}
+      </div>
+      <div class="ctcard-metric">
+        <div class="ctcard-label">Конверсия MQL→успех</div>
+        <div class="ctcard-val mono">{{ c.conv|pct }}</div>
+        {{ delta(c.conv_delta) }}
+      </div>
+      <div class="ctcard-metric">
+        <div class="ctcard-label">Длина сделки</div>
+        <div class="ctcard-val mono">{{ c.deal_length|dur }} мес</div>
+        {{ delta(c.len_delta) }}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+
 <section class="panel">
   <h2>Конверсия по месяцам · MQL → SQL и SQL → успех</h2>
   <div class="chart-wrap"><canvas id="convChart" height="90"></canvas></div>

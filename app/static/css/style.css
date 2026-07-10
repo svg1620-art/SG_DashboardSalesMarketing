@@ -186,6 +186,19 @@ a:hover { text-decoration: underline; }
 .mgr-len { font-size: 12px; }
 .mgr-cnt { font-size: 11px; text-align: right; }
 
+/* Карточки по типам клиента (По месяцам) */
+.ctcards { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 16px; }
+.ctcard { background: var(--surface-2); border: 1px solid var(--border); border-radius: 14px; padding: 0 18px 16px; border-top: 4px solid var(--accent); }
+.ctcard-head { padding: 14px 0 10px; margin-bottom: 6px; border-bottom: 1px solid var(--border); }
+.ctcard-name { font-weight: 800; font-size: 18px; color: var(--accent); letter-spacing: -0.01em; }
+.ctcard-metric { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 4px 10px; padding: 8px 0; }
+.ctcard-label { grid-column: 1 / -1; font-size: 12px; color: var(--muted); }
+.ctcard-val { font-size: 20px; font-weight: 700; }
+.delta { font-size: 12px; font-weight: 700; padding: 2px 8px; border-radius: 999px; white-space: nowrap; }
+.delta-up { color: #7DE0A0; background: rgba(34,197,94,.14); }
+.delta-down { color: #FF9AA0; background: rgba(245,85,90,.14); }
+.delta-none { color: var(--muted); background: var(--surface); }
+
 /* Дашборд: таблица метрик */
 .table-scroll { overflow-x: auto; }
 .metrics-table { min-width: 1200px; font-size: 13px; white-space: nowrap; }

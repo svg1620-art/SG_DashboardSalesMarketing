@@ -301,6 +301,80 @@ def _pct_or_null(v):
     return round(v * 100, 1) if v is not None else None
 
 
+def client_type_cards(f: dict) -> list:
+    """Карточки по типам клиента за период с дельтой к предыдущему периоду
+    той же длины (ТЗ §4, уточнение заказчика). Метрики: кол-во, конверсия
+    MQL→успех, длина сделки."""
+    cur = _ct_stats(f)
+    prev_f = _shift_period(f)
+    prev = _ct_stats(prev_f) if prev_f else {}
+
+    cards = []
+    for ct, s in sorted(cur.items(), key=lambda kv: kv[1]["count"], reverse=True):
+        if short_client_type(ct) in ("(без", "") or ct == "(без типа)":
+            continue
+        p = prev.get(ct, {})
+        cards.append({
+            "ct": short_client_type(ct),
+            "color": client_type_color(ct, len(cards)),
+            "count": s["count"], "count_delta": _delta(s["count"], p.get("count")),
+            "conv": s["conv"], "conv_delta": _delta(s["conv"], p.get("conv")),
+            "deal_length": s["deal_length"],
+            "len_delta": _delta(s["deal_length"], p.get("deal_length")),
+        })
+    return cards
+
+
+def _ct_stats(f: dict) -> dict:
+    """Кол-во / конверсия MQL→успех / длина сделки по типу клиента за период."""
+    f2 = dict(f)
+    f2["client_type"] = None  # разбивка по всем типам независимо от фильтра
+    where, params = _deal_where(f2)
+    rows = db.query(
+        f"""SELECT COALESCE(NULLIF(d.client_type, ''), '(без типа)') AS ct,
+                   count(*)                       AS cnt,
+                   count(*) FILTER (WHERE d.sold) AS sold,
+                   COALESCE(avg(
+                       (EXTRACT(YEAR FROM d.closed_at) * 12 + EXTRACT(MONTH FROM d.closed_at))
+                     - (EXTRACT(YEAR FROM d.created_at) * 12 + EXTRACT(MONTH FROM d.created_at))
+                     + 1) FILTER (WHERE d.sold AND d.closed_at IS NOT NULL), 0) AS deal_length
+              FROM deals d WHERE {where} GROUP BY 1""",
+        params,
+    )
+    # Агрегируем по короткому коду (варианты «МКК (…)» сливаются в «МКК»)
+    agg: dict = {}
+    for r in rows:
+        code = short_client_type(r["ct"] or "(без типа)")
+        a = agg.setdefault(code, {"cnt": 0, "sold": 0, "len_wsum": 0.0})
+        a["cnt"] += r["cnt"]
+        a["sold"] += r["sold"]
+        a["len_wsum"] += float(r["deal_length"] or 0) * r["sold"]
+    return {code: {"count": a["cnt"], "conv": _div(a["sold"], a["cnt"]),
+                   "deal_length": _div(a["len_wsum"], a["sold"]) or 0.0}
+            for code, a in agg.items()}
+
+
+def _shift_period(f: dict):
+    """Предыдущий период той же длины, заканчивающийся за день до текущего."""
+    from datetime import timedelta
+    df, dt = f.get("date_from"), f.get("date_to")
+    if not df or not dt:
+        return None
+    length = (dt - df).days + 1
+    prev_to = df - timedelta(days=1)
+    prev_from = prev_to - timedelta(days=length - 1)
+    f2 = dict(f)
+    f2["date_from"], f2["date_to"] = prev_from, prev_to
+    return f2
+
+
+def _delta(cur, prev):
+    """Относительное изменение к прошлому периоду (None если не с чем сравнить)."""
+    if cur is None or prev is None or prev == 0:
+        return None
+    return (cur - prev) / prev
+
+
 def _select_months(by_key: dict, f: dict) -> list:
     """Определяет, какие месяцы показать и в каком порядке."""
     all_months = sorted(by_key)
