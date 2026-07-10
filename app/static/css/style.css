@@ -199,6 +199,21 @@ a:hover { text-decoration: underline; }
 .delta-down { color: #FF9AA0; background: rgba(245,85,90,.14); }
 .delta-none { color: var(--muted); background: var(--surface); }
 
+/* Панель анализа нейросети */
+.ai-panel { border: 1px solid var(--border); }
+.ai-head { display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; margin-bottom: 12px; }
+.ai-result { font-size: 14px; line-height: 1.6; }
+.ai-result h4 { margin: 14px 0 6px; font-size: 15px; color: var(--cyan); }
+.ai-result ul, .ai-result ol { margin: 6px 0 6px 20px; }
+.ai-result li { margin: 3px 0; }
+.ai-result p { margin: 6px 0; }
+.ai-result strong { color: var(--text); }
+.ai-err { color: var(--danger); }
+.ai-spin { display: inline-block; width: 14px; height: 14px; border: 2px solid var(--border);
+  border-top-color: var(--cyan); border-radius: 50%; animation: ai-spin 0.8s linear infinite;
+  vertical-align: -2px; margin-right: 6px; }
+@keyframes ai-spin { to { transform: rotate(360deg); } }
+
 /* Дашборд: таблица метрик */
 .table-scroll { overflow-x: auto; }
 .metrics-table { min-width: 1200px; font-size: 13px; white-space: nowrap; }

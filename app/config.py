@@ -42,6 +42,10 @@ class Config:
     # Юнит-экономика: расчётный срок жизни клиента для LTV (ТЗ §3, LT из исходника)
     LTV_MONTHS = int(os.environ.get("LTV_MONTHS", "21"))
 
+    # Нейросеть (анализ и рекомендации по запросу) — Claude API
+    ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
+    AI_MODEL = os.environ.get("AI_MODEL", "claude-opus-4-8")
+
     @property
     def amocrm_base_url(self) -> str:
         return f"https://{self.AMOCRM_SUBDOMAIN}.amocrm.ru/api/v4"

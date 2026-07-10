@@ -3,6 +3,8 @@
 {% block content %}
 {% include "dashboard/_tabs.html" %}
 {% include "dashboard/_filters.html" %}
+{% set ai_page = 'months' %}
+{% include "dashboard/_ai.html" %}
 
 {% macro delta(d) -%}
   {%- if d is none -%}<span class="delta delta-none">—</span>

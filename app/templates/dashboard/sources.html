@@ -3,6 +3,8 @@
 {% block content %}
 {% include "dashboard/_tabs.html" %}
 {% include "dashboard/_filters.html" %}
+{% set ai_page = 'sources' %}
+{% include "dashboard/_ai.html" %}
 
 <section class="panel">
   <h2>Воронка{% if filters.source %} · {{ filters.source }}{% endif %}

@@ -3,6 +3,8 @@
 {% block content %}
 {% include "dashboard/_tabs.html" %}
 {% include "dashboard/_filters.html" %}
+{% set ai_page = 'managers' %}
+{% include "dashboard/_ai.html" %}
 
 <section class="panel">
   <h2>Менеджеры по типам клиентов <span class="muted">· конверсия MQL→успех и длина сделки</span></h2>

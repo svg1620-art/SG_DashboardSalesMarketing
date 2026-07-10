@@ -261,6 +261,28 @@ def deals():
     )
 
 
+@dashboard_bp.route("/ai/recommendations", methods=["POST"])
+@login_required
+def ai_recommendations():
+    """Анализ и рекомендации от нейросети по данным текущей страницы (по запросу)."""
+    from flask import jsonify
+    from .. import ai
+    cfg = current_app.config["APP_CONFIG"]
+    if not cfg.ANTHROPIC_API_KEY:
+        return jsonify({"ok": False,
+                        "error": "Нейросеть не настроена: задайте ANTHROPIC_API_KEY."}), 400
+    page = request.args.get("page", "sources")
+    if page not in ai.PAGE_TITLES:
+        return jsonify({"ok": False, "error": "Неизвестный раздел"}), 400
+    f = metrics.parse_filters(request.args)
+    try:
+        text = ai.analyze(page, f, cfg)
+        return jsonify({"ok": True, "html": ai.render_markdown(text)})
+    except Exception as exc:  # noqa: BLE001 — показываем причину пользователю
+        current_app.logger.warning("AI-анализ не удался: %s", exc)
+        return jsonify({"ok": False, "error": f"Ошибка нейросети: {exc}"}), 502
+
+
 @dashboard_bp.route("/dashboard/export")
 @login_required
 def export():

@@ -1,0 +1,32 @@
+<section class="panel ai-panel">
+  <div class="ai-head">
+    <h2>Анализ нейросети <span class="muted">· по данным текущего вида</span></h2>
+    <button id="ai-btn" class="btn-primary btn-inline">🤖 Рекомендации от нейросети</button>
+  </div>
+  <div id="ai-result" class="ai-result muted">
+    Нажмите кнопку — Claude проанализирует показатели этого раздела: закономерности, аномалии и конкретные рекомендации. Учитываются активные фильтры.
+  </div>
+</section>
+<script>
+(function () {
+  const btn = document.getElementById('ai-btn');
+  const res = document.getElementById('ai-result');
+  if (!btn) return;
+  btn.addEventListener('click', async () => {
+    btn.disabled = true;
+    res.classList.remove('muted');
+    res.innerHTML = '<span class="ai-spin"></span> Анализирую данные…';
+    const params = new URLSearchParams(window.location.search);
+    params.set('page', '{{ ai_page }}');
+    try {
+      const r = await fetch('{{ url_for("dashboard.ai_recommendations") }}?' + params.toString(),
+                            { method: 'POST' });
+      const d = await r.json();
+      res.innerHTML = d.ok ? d.html : '<span class="ai-err">' + d.error + '</span>';
+    } catch (e) {
+      res.innerHTML = '<span class="ai-err">Не удалось получить ответ.</span>';
+    }
+    btn.disabled = false;
+  });
+})();
+</script>
