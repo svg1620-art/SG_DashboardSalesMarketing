@@ -36,6 +36,7 @@ def parse_filters(args) -> dict:
         "date_to": _d("date_to"),
         "manager_id": _i("manager_id"),
         "source": (args.get("source") or "").strip() or None,
+        "client_type": (args.get("client_type") or "").strip() or None,
         "months": months,
         "month_of_year": month_of_year,
     }
@@ -57,6 +58,9 @@ def _deal_where(f: dict):
     if f.get("source"):
         clauses.append("d.source = %s")
         params.append(f["source"])
+    if f.get("client_type"):
+        clauses.append("d.client_type = %s")
+        params.append(f["client_type"])
     return " AND ".join(clauses), params
 
 
@@ -118,7 +122,40 @@ def by_source(f: dict) -> dict:
         # поэтапная конверсия каждого этапа к предыдущему (для подписей на диаграмме)
         "conv": [None] + [_div(values[i], values[i - 1]) for i in range(1, len(values))],
     }
-    return {"rows": result_rows, "total": total, "funnel": funnel}
+    funnel_ct = _funnel_by_client_type(where, params)
+    return {"rows": result_rows, "total": total, "funnel": funnel,
+            "funnel_ct": funnel_ct}
+
+
+def _funnel_by_client_type(where: str, params: list) -> dict:
+    """Разбивка воронки с этапа SQL по типу клиента (для стека и процентов)."""
+    rows = db.query(
+        f"""SELECT COALESCE(NULLIF(d.client_type, ''), '(без типа)') AS ct,
+                   count(*) FILTER (WHERE d.reached_sql)        AS sql,
+                   count(*) FILTER (WHERE d.meeting_scheduled)  AS meeting_scheduled,
+                   count(*) FILTER (WHERE d.meeting_held)       AS meeting_held,
+                   count(*) FILTER (WHERE d.invoiced)           AS invoiced,
+                   count(*) FILTER (WHERE d.sold)               AS sold
+              FROM deals d WHERE {where}
+             GROUP BY 1""",
+        params,
+    )
+    stages = ["sql", "meeting_scheduled", "meeting_held", "invoiced", "sold"]
+    stage_labels = ["Возможности (SQL)", "Назначено встреч", "Проведено встреч",
+                    "Выставлено счетов", "Продажи"]
+    # только типы, у которых есть хоть один SQL+
+    types = [dict(r) for r in rows if any(r[s] for s in stages)]
+    types.sort(key=lambda r: r["sql"], reverse=True)
+    stage_totals = [sum(t[s] for t in types) for s in stages]
+
+    series = []
+    for i, t in enumerate(types):
+        series.append({
+            "name": t["ct"],
+            "color": client_type_color(t["ct"], i),
+            "counts": [t[s] for s in stages],
+        })
+    return {"stage_labels": stage_labels, "series": series, "stage_totals": stage_totals}
 
 
 def _source_has_activity(r: dict) -> bool:
@@ -157,6 +194,53 @@ def by_manager(f: dict) -> dict:
     total = _totals(result_rows, f)
     total["manager"] = "Все менеджеры"
     return {"rows": result_rows, "total": total}
+
+
+def manager_cards(f: dict) -> dict:
+    """Карточки менеджеров: по каждому типу клиента — конверсия MQL→успех и
+    средняя длина сделки. Позволяет увидеть, кто с каким типом клиента лучше
+    справляется (ТЗ §4, уточнение заказчика). Только менеджеры с активностью
+    в выбранном периоде."""
+    where, params = _deal_where(f)
+    rows = db.query(
+        f"""SELECT d.responsible_user_id AS uid,
+                   COALESCE(m.name,
+                       CASE WHEN d.responsible_user_id IS NULL THEN '(не назначен)'
+                            ELSE 'ID ' || d.responsible_user_id::text END) AS manager,
+                   COALESCE(NULLIF(d.client_type, ''), '(без типа)') AS ct,
+                   count(*)                          AS mql,
+                   count(*) FILTER (WHERE d.sold)    AS sold,
+                   COALESCE(avg(
+                       (EXTRACT(YEAR FROM d.closed_at) * 12 + EXTRACT(MONTH FROM d.closed_at))
+                     - (EXTRACT(YEAR FROM d.created_at) * 12 + EXTRACT(MONTH FROM d.created_at))
+                     + 1) FILTER (WHERE d.sold AND d.closed_at IS NOT NULL), 0) AS deal_length
+              FROM deals d
+              LEFT JOIN managers m ON m.amo_user_id = d.responsible_user_id
+             WHERE {where}
+             GROUP BY 1, 2, 3""",
+        params,
+    )
+    cards: dict = {}
+    for r in rows:
+        card = cards.setdefault(r["manager"], {"manager": r["manager"],
+                                               "mql": 0, "sold": 0, "types": {}})
+        card["mql"] += r["mql"]
+        card["sold"] += r["sold"]
+        card["types"][r["ct"]] = {
+            "ct": r["ct"],
+            "color": client_type_color(r["ct"], len(card["types"])),
+            "mql": r["mql"], "sold": r["sold"],
+            "conv": _div(r["sold"], r["mql"]),
+            "deal_length": float(r["deal_length"] or 0),
+        }
+    out = []
+    for card in cards.values():
+        card["conv_total"] = _div(card["sold"], card["mql"])
+        card["type_list"] = sorted(card["types"].values(),
+                                   key=lambda t: t["mql"], reverse=True)
+        out.append(card)
+    out.sort(key=lambda c: c["mql"], reverse=True)
+    return {"cards": out}
 
 
 def by_month(f: dict, config) -> dict:
@@ -433,7 +517,24 @@ def filter_options() -> dict:
         """SELECT DISTINCT to_char(date_trunc('month', created_at), 'YYYY-MM') AS m
              FROM deals WHERE created_at IS NOT NULL ORDER BY m DESC"""
     )
+    client_types = db.query(
+        """SELECT client_type AS ct, count(*) AS n FROM deals
+             WHERE client_type IS NOT NULL AND client_type <> ''
+             GROUP BY 1 ORDER BY n DESC"""
+    )
     return {"managers": managers, "sources": sources,
             "months": [r["m"] for r in months],
+            "client_types": [r["ct"] for r in client_types],
             "min_date": bounds["min_d"] if bounds else None,
             "max_date": bounds["max_d"] if bounds else None}
+
+
+# Цвета типов клиентов для диаграмм и карточек
+CLIENT_TYPE_COLORS = {
+    "МКК": "#1467F5", "КК": "#00BFDC", "СКК": "#26E0A0",
+}
+_CT_FALLBACK = ["#F5A623", "#B36BFF", "#F5555A", "#8A8A99"]
+
+
+def client_type_color(ct: str, idx: int = 0) -> str:
+    return CLIENT_TYPE_COLORS.get(ct, _CT_FALLBACK[idx % len(_CT_FALLBACK)])

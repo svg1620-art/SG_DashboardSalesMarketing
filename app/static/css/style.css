@@ -169,6 +169,22 @@ a:hover { text-decoration: underline; }
 /* Дашборд: воронка */
 .funnel-wrap { position: relative; }
 .chart-wrap { position: relative; }
+.ct-legend { display: flex; gap: 18px; flex-wrap: wrap; margin-top: 12px; }
+.ct-item { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); }
+.ct-dot { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+
+/* Карточки менеджеров */
+.mgr-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; }
+.mgr-card { background: var(--surface-2); border: 1px solid var(--border); border-radius: 12px; padding: 16px; }
+.mgr-card-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin-bottom: 12px; border-bottom: 1px solid var(--border); padding-bottom: 10px; }
+.mgr-name { font-weight: 700; }
+.mgr-total { font-size: 13px; color: var(--cyan); }
+.mgr-types { display: flex; flex-direction: column; gap: 8px; }
+.mgr-type { display: grid; grid-template-columns: 14px 48px 1fr auto auto; align-items: center; gap: 8px; font-size: 13px; }
+.mgr-ct { font-weight: 600; }
+.mgr-conv { color: var(--text); font-weight: 700; }
+.mgr-len { font-size: 12px; }
+.mgr-cnt { font-size: 11px; text-align: right; }
 
 /* Дашборд: таблица метрик */
 .table-scroll { overflow-x: auto; }

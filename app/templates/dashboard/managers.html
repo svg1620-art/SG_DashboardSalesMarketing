@@ -5,6 +5,33 @@
 {% include "dashboard/_filters.html" %}
 
 <section class="panel">
+  <h2>Менеджеры по типам клиентов <span class="muted">· конверсия MQL→успех и длина сделки</span></h2>
+  <div class="mgr-cards">
+    {% for card in cards %}
+    <div class="mgr-card">
+      <div class="mgr-card-head">
+        <span class="mgr-name">{{ card.manager }}</span>
+        <span class="mgr-total mono">{{ card.conv_total|pct }} · {{ card.mql|num }} MQL</span>
+      </div>
+      <div class="mgr-types">
+        {% for t in card.type_list %}
+        <div class="mgr-type">
+          <span class="ct-dot" style="background:{{ t.color }}"></span>
+          <span class="mgr-ct">{{ t.ct }}</span>
+          <span class="mgr-conv mono">{{ t.conv|pct }}</span>
+          <span class="mgr-len mono muted">{{ t.deal_length|dur }} мес</span>
+          <span class="mgr-cnt muted">{{ t.sold|num }}/{{ t.mql|num }}</span>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% else %}
+    <p class="muted">Нет менеджеров с активностью в выбранном периоде.</p>
+    {% endfor %}
+  </div>
+</section>
+
+<section class="panel">
   <h2>Метрики по менеджерам</h2>
   <div class="table-scroll">
     <table class="data-table metrics-table">

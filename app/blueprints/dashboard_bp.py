@@ -25,9 +25,26 @@ def index():
     return redirect(url_for("dashboard.sources", **request.args))
 
 
+def _default_period_redirect(period: str):
+    """При первом открытии (без параметров дат) подставляем период по
+    умолчанию в URL: 'month' — текущий месяц, 'year' — текущий год."""
+    from datetime import date
+    if "date_from" in request.args or "date_to" in request.args:
+        return None
+    today = date.today()
+    start = today.replace(day=1) if period == "month" else today.replace(month=1, day=1)
+    args = request.args.to_dict()
+    args["date_from"] = start.isoformat()
+    args["date_to"] = today.isoformat()
+    return redirect(url_for(request.endpoint, **args))
+
+
 @dashboard_bp.route("/dashboard/sources")
 @login_required
 def sources():
+    r = _default_period_redirect("month")
+    if r:
+        return r
     f = metrics.parse_filters(request.args)
     data = metrics.by_source(f)
     return render_template(
@@ -35,6 +52,7 @@ def sources():
         tabs=TABS, active="sources", filters=f,
         options=metrics.filter_options(),
         rows=data["rows"], total=data["total"], funnel=data["funnel"],
+        funnel_ct=data["funnel_ct"],
     )
 
 
@@ -50,6 +68,9 @@ def _placeholder(key: str, stage: int):
 @dashboard_bp.route("/dashboard/months")
 @login_required
 def months():
+    r = _default_period_redirect("year")
+    if r:
+        return r
     f = metrics.parse_filters(request.args)
     data = metrics.by_month(f, current_app.config["APP_CONFIG"])
     return render_template(
@@ -66,13 +87,17 @@ def months():
 @dashboard_bp.route("/dashboard/managers")
 @login_required
 def managers():
+    r = _default_period_redirect("month")
+    if r:
+        return r
     f = metrics.parse_filters(request.args)
     data = metrics.by_manager(f)
+    cards = metrics.manager_cards(f)
     return render_template(
         "dashboard/managers.html",
         tabs=TABS, active="managers", filters=f,
         options=metrics.filter_options(),
-        rows=data["rows"], total=data["total"],
+        rows=data["rows"], total=data["total"], cards=cards["cards"],
     )
 
 
@@ -184,6 +209,9 @@ def costs_operating_delete(month):
 @dashboard_bp.route("/dashboard/deals")
 @login_required
 def deals():
+    r = _default_period_redirect("month")
+    if r:
+        return r
     f = metrics.parse_filters(request.args)
     q = (request.args.get("q") or "").strip()
     try:

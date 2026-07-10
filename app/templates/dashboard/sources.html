@@ -9,6 +9,18 @@
   <div class="funnel-wrap"><canvas id="funnelChart" height="120"></canvas></div>
 </section>
 
+{% if funnel_ct.series %}
+<section class="panel">
+  <h2>Разбивка по типу клиента (с этапа SQL)</h2>
+  <div class="funnel-wrap"><canvas id="ctChart" height="120"></canvas></div>
+  <div class="ct-legend">
+    {% for s in funnel_ct.series %}
+    <span class="ct-item"><span class="ct-dot" style="background:{{ s.color }}"></span>{{ s.name }}</span>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+
 <section class="panel">
   <h2>Метрики по источникам</h2>
   <div class="table-scroll">
@@ -112,6 +124,64 @@ if (ctx && window.Chart) {
       },
     },
     plugins: [stageLabels],
+  });
+}
+
+// --- Стек по типу клиента (с SQL): проценты внутри сегментов ---
+const CT = {{ funnel_ct|tojson }};
+const ctEl = document.getElementById('ctChart');
+const ctPctLabels = {
+  id: 'ctPctLabels',
+  afterDatasetsDraw(chart) {
+    const {ctx} = chart;
+    ctx.save();
+    ctx.font = '600 12px "JetBrains Mono", monospace';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    chart.data.datasets.forEach((ds, di) => {
+      const meta = chart.getDatasetMeta(di);
+      meta.data.forEach((bar, si) => {
+        const val = ds.data[si];
+        const tot = CT.stage_totals[si] || 0;
+        if (!val || !tot) return;
+        const w = Math.abs(bar.x - bar.base);
+        if (w < 34) return;                       // узкий сегмент — не подписываем
+        const pct = (val / tot * 100).toFixed(0) + '%';
+        ctx.fillStyle = '#0A0A0D';
+        ctx.fillText(pct, (bar.x + bar.base) / 2, bar.y);
+      });
+    });
+    ctx.restore();
+  }
+};
+if (ctEl && window.Chart && CT.series && CT.series.length) {
+  new Chart(ctEl, {
+    type: 'bar',
+    data: {
+      labels: CT.stage_labels,
+      datasets: CT.series.map(s => ({
+        label: s.name, data: s.counts, backgroundColor: s.color,
+        borderRadius: 4, borderWidth: 1, borderColor: '#0A0A0D', stack: 'ct',
+      })),
+    },
+    options: {
+      indexAxis: 'y',
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: {
+          label: c => {
+            const tot = CT.stage_totals[c.dataIndex] || 0;
+            const p = tot ? (c.parsed.x / tot * 100).toFixed(1) : 0;
+            return c.dataset.label + ': ' + c.parsed.x + ' (' + p + '%)';
+          }
+        } },
+      },
+      scales: {
+        x: { stacked: true, ticks: { color: '#8A8A99' }, grid: { color: 'rgba(255,255,255,.05)' }, border: { display: false } },
+        y: { stacked: true, ticks: { color: '#EDEDF2', font: { size: 13, weight: '600' } }, grid: { display: false }, border: { display: false } },
+      },
+    },
+    plugins: [ctPctLabels],
   });
 }
 </script>

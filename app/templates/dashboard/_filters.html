@@ -28,6 +28,15 @@
     </select>
   </div>
   <div class="filter-field">
+    <label>Тип клиента</label>
+    <select name="client_type">
+      <option value="">Все</option>
+      {% for ct in options.client_types %}
+      <option value="{{ ct }}" {{ 'selected' if filters.client_type == ct }}>{{ ct }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="filter-field">
     <label>Воронка</label>
     <select disabled><option>Воронка 1</option></select>
   </div>
