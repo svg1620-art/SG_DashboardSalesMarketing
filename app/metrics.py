@@ -289,12 +289,53 @@ def by_month(f: dict, config) -> dict:
     _add_step_conversions(total)
 
     # Данные для диаграммы конверсий по месяцам (MQL→SQL и SQL→успех)
+    labels = [r["month"] for r in out]
     chart = {
-        "labels": [r["month"] for r in out],
+        "labels": labels,
         "mql_sql": [_pct_or_null(r["cr_mql_sql"]) for r in out],
         "sql_won": [_pct_or_null(r["cr_sql_sold"]) for r in out],
     }
-    return {"rows": out, "total": total, "chart": chart}
+    ct_chart = _ct_conversion_by_month(f, labels)
+    return {"rows": out, "total": total, "chart": chart, "ct_chart": ct_chart}
+
+
+def _ct_conversion_by_month(f: dict, months: list) -> dict:
+    """Конверсия MQL→успех по типам клиента и месяцам (линия на тип)."""
+    f2 = dict(f)
+    f2["client_type"] = None  # разбивка по всем типам независимо от фильтра
+    where, params = _deal_where(f2)
+    rows = db.query(
+        f"""SELECT to_char(date_trunc('month', d.created_at), 'YYYY-MM') AS m,
+                   COALESCE(NULLIF(d.client_type, ''), '(без типа)')      AS ct,
+                   count(*)                       AS cnt,
+                   count(*) FILTER (WHERE d.sold) AS sold
+              FROM deals d
+             WHERE {where} AND d.created_at IS NOT NULL
+             GROUP BY 1, 2""",
+        params,
+    )
+    # {month: {code: {cnt, sold}}} с агрегацией вариантов в короткий код
+    by_month_ct: dict = {}
+    totals: dict = {}
+    for r in rows:
+        code = short_client_type(r["ct"] or "(без типа)")
+        if code == "(без типа)":
+            continue
+        m = by_month_ct.setdefault(r["m"], {})
+        a = m.setdefault(code, {"cnt": 0, "sold": 0})
+        a["cnt"] += r["cnt"]
+        a["sold"] += r["sold"]
+        totals[code] = totals.get(code, 0) + r["cnt"]
+
+    codes = sorted(totals, key=lambda c: totals[c], reverse=True)
+    series = []
+    for i, code in enumerate(codes):
+        data = []
+        for m in months:
+            cell = by_month_ct.get(m, {}).get(code)
+            data.append(_pct_or_null(_div(cell["sold"], cell["cnt"])) if cell else None)
+        series.append({"name": code, "color": client_type_color(code, i), "data": data})
+    return {"labels": months, "series": series}
 
 
 def _pct_or_null(v):

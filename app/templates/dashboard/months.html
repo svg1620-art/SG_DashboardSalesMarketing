@@ -46,6 +46,13 @@
   <div class="chart-wrap"><canvas id="convChart" height="90"></canvas></div>
 </section>
 
+{% if ct_chart.series %}
+<section class="panel">
+  <h2>Конверсия MQL → успех по типам клиента · по месяцам</h2>
+  <div class="chart-wrap"><canvas id="ctConvChart" height="90"></canvas></div>
+</section>
+{% endif %}
+
 {% macro cell(kind, val) -%}
   {%- if kind == 'num' -%}{{ val|num }}
   {%- elif kind == 'money' -%}{{ val|money }}
@@ -127,6 +134,32 @@ if (cctx && window.Chart && CONV.labels.length) {
         { label: 'SQL → успех', data: CONV.sql_won, borderColor: '#00D6C4',
           backgroundColor: '#00D6C4', tension: 0.3, spanGaps: true, pointRadius: 3, borderWidth: 2 },
       ],
+    },
+    options: {
+      plugins: {
+        legend: { labels: { color: '#EDEDF2', font: { size: 13 } } },
+        tooltip: { callbacks: { label: c => c.dataset.label + ': ' + c.parsed.y + '%' } },
+      },
+      scales: {
+        x: { ticks: { color: '#8A8A99' }, grid: { color: 'rgba(255,255,255,.05)' } },
+        y: { ticks: { color: '#8A8A99', callback: v => v + '%' }, grid: { color: 'rgba(255,255,255,.05)' }, beginAtZero: true },
+      },
+    },
+  });
+}
+
+// Конверсия MQL→успех по типам клиента (линия на тип)
+const CTCONV = {{ ct_chart|tojson }};
+const ctcEl = document.getElementById('ctConvChart');
+if (ctcEl && window.Chart && CTCONV.series && CTCONV.series.length) {
+  new Chart(ctcEl, {
+    type: 'line',
+    data: {
+      labels: CTCONV.labels,
+      datasets: CTCONV.series.map(s => ({
+        label: s.name, data: s.data, borderColor: s.color, backgroundColor: s.color,
+        tension: 0.3, spanGaps: true, pointRadius: 3, borderWidth: 2,
+      })),
     },
     options: {
       plugins: {
