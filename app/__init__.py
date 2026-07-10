@@ -61,6 +61,11 @@ def create_app(config: Config | None = None) -> Flask:
             return "—"
         return f"{v:.1f}".replace(".", ",")
 
+    @app.template_filter("ctshort")
+    def _fmt_ctshort(v):
+        from .metrics import short_client_type
+        return short_client_type(v)
+
     # Блюпринты
     from .blueprints.dashboard_bp import dashboard_bp
     from .blueprints.admin_bp import admin_bp

@@ -32,7 +32,7 @@
     <select name="client_type">
       <option value="">Все</option>
       {% for ct in options.client_types %}
-      <option value="{{ ct }}" {{ 'selected' if filters.client_type == ct }}>{{ ct }}</option>
+      <option value="{{ ct }}" {{ 'selected' if filters.client_type == ct }}>{{ ct|ctshort }}</option>
       {% endfor %}
     </select>
   </div>

@@ -151,7 +151,7 @@ def _funnel_by_client_type(where: str, params: list) -> dict:
     series = []
     for i, t in enumerate(types):
         series.append({
-            "name": t["ct"],
+            "name": short_client_type(t["ct"]),
             "color": client_type_color(t["ct"], i),
             "counts": [t[s] for s in stages],
         })
@@ -227,7 +227,7 @@ def manager_cards(f: dict) -> dict:
         card["mql"] += r["mql"]
         card["sold"] += r["sold"]
         card["types"][r["ct"]] = {
-            "ct": r["ct"],
+            "ct": short_client_type(r["ct"]),
             "color": client_type_color(r["ct"], len(card["types"])),
             "mql": r["mql"], "sold": r["sold"],
             "conv": _div(r["sold"], r["mql"]),
@@ -536,5 +536,15 @@ CLIENT_TYPE_COLORS = {
 _CT_FALLBACK = ["#F5A623", "#B36BFF", "#F5555A", "#8A8A99"]
 
 
+def short_client_type(ct: str) -> str:
+    """Короткий код типа клиента: «МКК (неключевой до 100)» → «МКК»."""
+    import re
+    if not ct:
+        return ct
+    m = re.match(r"^\s*([A-Za-zА-Яа-яЁё]{2,5})\b", ct)
+    return m.group(1) if m else ct
+
+
 def client_type_color(ct: str, idx: int = 0) -> str:
-    return CLIENT_TYPE_COLORS.get(ct, _CT_FALLBACK[idx % len(_CT_FALLBACK)])
+    return CLIENT_TYPE_COLORS.get(short_client_type(ct),
+                                  _CT_FALLBACK[idx % len(_CT_FALLBACK)])
