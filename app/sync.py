@@ -158,18 +158,24 @@ def run_sync(config, full: bool = False) -> None:
         PROGRESS.update(phase="deals", message="Сделки")
         status_map = _load_status_map(conn)
         history = _load_history(conn)
-        deals_synced = _sync_deals(conn, client, config, cf_map, status_map, history)
+        deals_synced, seen = _sync_deals(conn, client, config, cf_map, status_map, history)
+
+        # 3b. Сверка: удаляем сделки, исчезнувшие из воронки amoCRM
+        PROGRESS.update(phase="reconcile", message="Сверка удалённых/перенесённых")
+        removed = _reconcile_deals(conn, seen)
 
         # 4. Обновление справочника источников
         _sync_sources(conn)
 
+        removed_note = (f", удалено (нет в amo) {removed}" if removed > 0 else
+                        f", сверка пропущена ({-removed} под удаление)" if removed < 0 else "")
         with conn.cursor() as cur:
             cur.execute(
                 """UPDATE sync_log SET finished_at = now(), status = 'ok',
                        deals_synced = %s, events_synced = %s,
                        message = %s WHERE id = %s""",
                 (deals_synced, events_synced,
-                 f"OK: сделок {deals_synced}, событий {events_synced}, "
+                 f"OK: сделок {deals_synced}, событий {events_synced}{removed_note}, "
                  f"поля {sorted(cf_map)}", log_id),
             )
         conn.commit()
@@ -315,10 +321,15 @@ def _load_history(conn) -> dict:
     return hist
 
 
-def _sync_deals(conn, client, config, cf_map, status_map, history) -> int:
+def _sync_deals(conn, client, config, cf_map, status_map, history):
+    """Возвращает (кол-во, множество актуальных amo_lead_id из amoCRM)."""
     count = 0
+    seen = set()
     batch = []
     for lead in client.iter_leads(pipeline_id=config.AMOCRM_PIPELINE_ID):
+        lead_id = lead.get("id")
+        if lead_id is not None:
+            seen.add(lead_id)
         row = _build_deal_row(lead, cf_map, status_map, history)
         batch.append(row)
         count += 1
@@ -329,7 +340,36 @@ def _sync_deals(conn, client, config, cf_map, status_map, history) -> int:
     if batch:
         _flush_deals(conn, batch)
     PROGRESS.update(deals_done=count, deals_total=count)
-    return count
+    return count, seen
+
+
+def _reconcile_deals(conn, seen: set) -> int:
+    """Удаляет сделки, которых больше нет в воронке amoCRM (удалены/перенесены).
+
+    iter_leads отдаёт ВСЕ текущие сделки воронки (включая закрытые — они остаются
+    в воронке), поэтому отсутствие в `seen` = сделки в amoCRM больше нет.
+    Защита: не удаляем при пустой/подозрительно малой выгрузке.
+    """
+    with conn.cursor() as cur:
+        cur.execute("SELECT amo_lead_id FROM deals")
+        existing = {r[0] for r in cur.fetchall()}
+    stale = existing - seen
+    if not stale:
+        return 0
+
+    # Страховка от массового удаления из-за сбойной/частичной выгрузки:
+    # пустой seen или удаление >20% базы (и >100 сделок) — не трогаем, только лог.
+    if not seen or (len(stale) > 100 and len(stale) > 0.2 * max(1, len(existing))):
+        PROGRESS.update(message=f"Сверка пропущена: под удаление попало "
+                        f"{len(stale)} сделок — похоже на неполную выгрузку")
+        return -len(stale)  # отрицательное = пропущено (для лога)
+
+    ids = list(stale)
+    with conn.cursor() as cur:
+        cur.execute("DELETE FROM deal_stage_history WHERE amo_lead_id = ANY(%s)", (ids,))
+        cur.execute("DELETE FROM deals WHERE amo_lead_id = ANY(%s)", (ids,))
+    conn.commit()
+    return len(stale)
 
 
 def _build_deal_row(lead, cf_map, status_map, history):
